@@ -1,0 +1,19 @@
+{
+  "name": "ตารางเข้าเยี่ยม และที่ตั้งร้านค้า",
+  "short_name": "เข้าเยี่ยมร้านค้า",
+  "description": "ระบบจัดการร้านค้าและบันทึกการเข้าเยี่ยม พร้อมที่ตั้งบน Google Maps",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#eef2ff",
+  "theme_color": "#6366f1",
+  "lang": "th",
+  "icons": [
+    { "src": "icons/favicon-16.png", "sizes": "16x16", "type": "image/png" },
+    { "src": "icons/favicon-32.png", "sizes": "32x32", "type": "image/png" },
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
