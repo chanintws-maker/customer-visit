@@ -1,0 +1,1769 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+<meta name="theme-color" content="#6366f1">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="เข้าเยี่ยมร้านค้า">
+<meta name="format-detection" content="telephone=no">
+<meta name="color-scheme" content="light">
+<title>ตารางเข้าเยี่ยม และที่ตั้งร้านค้า</title>
+
+<!-- PWA: ทำให้กด "เพิ่มลงหน้าจอโฮม" แล้วเปิดแอปได้เหมือนแอปจริง -->
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<style>
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  * { font-family: 'Sarabun', sans-serif; -webkit-tap-highlight-color: transparent; }
+  body { overflow-x: hidden; }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 8px; }
+  ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 8px; }
+  ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+  /* Safe-area support for notched devices (iPhone, etc.) */
+  .safe-top { padding-top: env(safe-area-inset-top, 0px); }
+  .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .safe-x { padding-left: max(1rem, env(safe-area-inset-left, 0px)); padding-right: max(1rem, env(safe-area-inset-right, 0px)); }
+
+  .gradient-primary { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 60%, #06b6d4 100%); }
+  .gradient-btn { background: linear-gradient(135deg, #6366f1, #8b5cf6); transition: all .2s; touch-action: manipulation; }
+  .gradient-btn:hover { filter: brightness(1.08); transform: translateY(-1px); box-shadow: 0 8px 20px rgba(99,102,241,.35); }
+  .gradient-btn-green { background: linear-gradient(135deg, #10b981, #059669); transition: all .2s; touch-action: manipulation; }
+  .gradient-btn-green:hover { filter: brightness(1.08); transform: translateY(-1px); box-shadow: 0 8px 20px rgba(16,185,129,.35); }
+  .gradient-btn-red { background: linear-gradient(135deg, #f43f5e, #dc2626); transition: all .2s; touch-action: manipulation; }
+  .gradient-btn-red:hover { filter: brightness(1.08); transform: translateY(-1px); box-shadow: 0 8px 20px rgba(244,63,94,.35); }
+  .gradient-btn-amber { background: linear-gradient(135deg, #f59e0b, #d97706); transition: all .2s; touch-action: manipulation; }
+  .gradient-btn-amber:hover { filter: brightness(1.08); transform: translateY(-1px); box-shadow: 0 8px 20px rgba(245,158,11,.35); }
+  .gradient-btn-slate { background: linear-gradient(135deg, #64748b, #475569); transition: all .2s; touch-action: manipulation; }
+  .gradient-btn-slate:hover { filter: brightness(1.08); transform: translateY(-1px); }
+
+  /* Minimum comfortable touch target size on touch devices */
+  @media (pointer: coarse) {
+    button, select, .swal2-input { min-height: 44px; }
+    a { min-height: 40px; }
+  }
+
+  .card-shadow { box-shadow: 0 4px 20px rgba(30,41,59,0.07), 0 1px 3px rgba(30,41,59,0.06); }
+  .card-shadow-lg { box-shadow: 0 10px 40px rgba(30,41,59,0.12); }
+
+  .scroll-box { max-height: 480px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .scroll-box-sm { max-height: 320px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  @media (max-width: 640px) {
+    .scroll-box { max-height: 360px; }
+    .scroll-box-sm { max-height: 260px; }
+  }
+
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table-scroll table { min-width: 780px; }
+
+  .map-frame { width: 100%; height: 360px; }
+  @media (max-width: 1024px) { .map-frame { height: 320px; } }
+  @media (max-width: 640px) { .map-frame { height: 260px; } }
+
+  .chart-box { height: 300px; }
+  @media (max-width: 640px) { .chart-box { height: 240px; } }
+
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+  .dot-green { background:#22c55e; box-shadow:0 0 0 3px rgba(34,197,94,.2); }
+  .dot-red { background:#ef4444; box-shadow:0 0 0 3px rgba(239,68,68,.2); }
+  .dot-yellow { background:#eab308; box-shadow:0 0 0 3px rgba(234,179,8,.2); animation: pulse 1.4s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  .fade-in { animation: fadeIn .35s ease; }
+  @keyframes fadeIn { from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:translateY(0)} }
+
+  .tab-btn.active { background: linear-gradient(135deg, #6366f1, #8b5cf6); color:#fff; box-shadow:0 6px 16px rgba(99,102,241,.35); }
+
+  .badge-new { background:#dcfce7; color:#15803d; }
+  .badge-old { background:#dbeafe; color:#1d4ed8; }
+  .badge-cash { background:#fef3c7; color:#92400e; }
+  .badge-credit { background:#e0e7ff; color:#3730a3; }
+
+  input:focus, select:focus, textarea:focus { outline: none; box-shadow: 0 0 0 3px rgba(99,102,241,.18); border-color:#818cf8; }
+  input, select, textarea { font-size: 16px; } /* Prevents iOS Safari auto-zoom on focus */
+  @media (min-width: 640px) { input, select, textarea { font-size: 0.875rem; } }
+
+  /* Offline banner */
+  #offlineBanner { position: sticky; top: 0; z-index: 50; }
+</style>
+</head>
+<body class="bg-gradient-to-br from-slate-50 via-indigo-50/40 to-cyan-50/40 min-h-screen text-slate-800">
+
+<!-- ============ OFFLINE BANNER ============ -->
+<div id="offlineBanner" class="hidden bg-red-500 text-white text-xs sm:text-sm text-center py-2 px-3 font-semibold safe-x">
+  📡 ไม่มีสัญญาณอินเทอร์เน็ต — ข้อมูลอาจไม่เป็นปัจจุบัน
+</div>
+
+<!-- ============ HEADER ============ -->
+<header class="gradient-primary shadow-lg sticky top-0 z-40 safe-top">
+  <div class="max-w-7xl mx-auto px-3 sm:px-4 py-3 sm:py-4 safe-x flex flex-wrap items-center justify-between gap-2 sm:gap-3">
+    <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+      <div class="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center text-xl sm:text-2xl flex-shrink-0">🏪</div>
+      <div class="min-w-0">
+        <h1 class="text-white font-bold text-sm sm:text-lg md:text-xl leading-tight truncate">ตารางเข้าเยี่ยม และที่ตั้งร้านค้า</h1>
+        <p class="text-indigo-100 text-[11px] sm:text-sm truncate">ระบบจัดการร้านค้าและบันทึกการเข้าเยี่ยม</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2 sm:gap-3 flex-wrap justify-end w-full xs:w-auto">
+      <div id="liveClockBox" class="flex items-center gap-2 bg-white/15 backdrop-blur rounded-full px-3 py-1.5 text-white text-xs sm:text-sm" title="เวลาปัจจุบัน ตามเขตเวลาประเทศไทย (UTC+7)">
+        <span>🕐</span>
+        <span id="liveClockText" class="font-mono font-bold tabular-nums">--:--:--</span>
+        <span class="hidden sm:inline text-indigo-100 text-[10px]">น. (ไทย)</span>
+      </div>
+      <div id="connStatusBox" class="flex items-center gap-2 bg-white/15 backdrop-blur rounded-full px-3 py-1.5 text-white text-xs sm:text-sm">
+        <span id="connDot" class="status-dot dot-yellow"></span>
+        <span id="connText">กำลังโหลด...</span>
+      </div>
+      <button onclick="installApp()" id="installAppBtn" class="hidden bg-white/20 hover:bg-white/30 text-white text-xs sm:text-sm font-semibold px-3 py-2 rounded-xl transition backdrop-blur whitespace-nowrap">
+        📲 ติดตั้งแอป
+      </button>
+      <div id="adminBox">
+        <button onclick="openAdminLogin()" id="adminLoginBtn" class="bg-white/20 hover:bg-white/30 text-white text-xs sm:text-sm font-semibold px-3 py-2 rounded-xl transition backdrop-blur whitespace-nowrap">
+          🔐 เข้าสู่ระบบแอดมิน
+        </button>
+        <button onclick="adminLogout()" id="adminLogoutBtn" class="hidden bg-white/20 hover:bg-white/30 text-white text-xs sm:text-sm font-semibold px-3 py-2 rounded-xl transition backdrop-blur whitespace-nowrap">
+          👤 แอดมิน | ออกจากระบบ
+        </button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6 safe-x space-y-4 sm:space-y-6">
+
+  <!-- ============ QUICK ACTIONS ============ -->
+  <section class="bg-white rounded-2xl card-shadow p-4 sm:p-5">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h2 class="font-bold text-slate-700 flex items-center gap-2"><span>⚡</span> การดำเนินการด่วน</h2>
+      <div class="flex flex-wrap gap-2">
+        <button onclick="testConnection()" class="gradient-btn text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow">🔗 ทดสอบการเชื่อมต่อ</button>
+        <button onclick="loadFromSheet()" class="gradient-btn-green text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow">📥 โหลดข้อมูลจาก Google Sheet</button>
+        <button onclick="downloadPDF()" class="gradient-btn-amber text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow">📄 ดาวน์โหลด PDF</button>
+        <button onclick="downloadExcel()" class="gradient-btn-slate text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow">📊 ดาวน์โหลด Excel/CSV</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SHOP MANAGEMENT (ADMIN ONLY) ============ -->
+  <section id="shopManageSection" class="hidden bg-white rounded-2xl card-shadow p-4 sm:p-5 fade-in">
+    <h2 class="font-bold text-slate-700 flex items-center gap-2 mb-4"><span>🏬</span> จัดการร้านค้า <span class="text-xs font-normal bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">แอดมิน</span></h2>
+    <form id="shopForm" onsubmit="handleAddShop(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div>
+        <label class="text-xs font-semibold text-slate-500 mb-1 block">จังหวัดที่ตั้งร้านค้า <span class="text-red-500">*</span></label>
+        <select id="shopProvince" required onchange="updateShopCodePreview()" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm">
+          <option value="">-- เลือกจังหวัด --</option>
+        </select>
+        <p class="text-xs text-slate-400 mt-1">รหัสร้านค้า: <span id="shopCodePreview" class="font-mono font-semibold text-indigo-600">เลือกจังหวัดก่อน</span></p>
+      </div>
+      <div class="lg:col-span-2">
+        <label class="text-xs font-semibold text-slate-500 mb-1 block">ชื่อร้านค้า <span class="text-red-500">*</span></label>
+        <input type="text" id="shopName" required class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm" placeholder="เช่น ร้านค้าสุขใจ">
+      </div>
+      <div>
+        <label class="text-xs font-semibold text-slate-500 mb-1 block">เบอร์โทรติดต่อ</label>
+        <input type="tel" id="shopPhone" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm" placeholder="08X-XXX-XXXX">
+      </div>
+      <div>
+        <label class="text-xs font-semibold text-slate-500 mb-1 block">ประเภท (เงินสด/เครดิต) <span class="text-red-500">*</span></label>
+        <select id="shopPaymentType" required class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm">
+          <option value="">-- เลือกประเภท --</option>
+          <option value="เงินสด">💵 เงินสด</option>
+          <option value="เครดิต">💳 เครดิต</option>
+        </select>
+      </div>
+      <div class="lg:col-span-2">
+        <label class="text-xs font-semibold text-slate-500 mb-1 block">ที่อยู่ร้านค้า <span class="text-red-500">*</span></label>
+        <input type="text" id="shopAddress" required class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm" placeholder="เลขที่ / ถนน / ตำบล / อำเภอ / จังหวัด">
+      </div>
+      <div>
+        <label class="text-xs font-semibold text-slate-500 mb-1 block">วันที่เข้าเยี่ยม</label>
+        <input type="date" id="shopLastVisit" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm">
+      </div>
+      <div>
+        <label class="text-xs font-semibold text-slate-500 mb-1 block">ละติจูด (Lat)</label>
+        <input type="text" id="shopLat" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm" placeholder="13.9126">
+      </div>
+      <div>
+        <label class="text-xs font-semibold text-slate-500 mb-1 block">ลองจิจูด (Lng)</label>
+        <input type="text" id="shopLng" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm" placeholder="100.5106">
+      </div>
+      <div class="flex items-end gap-2">
+        <button type="button" onclick="useCurrentLocation('shopLat','shopLng')" class="gradient-btn-slate text-white text-xs font-semibold px-3 py-2.5 rounded-xl shadow whitespace-nowrap">📍 ใช้ตำแหน่งปัจจุบัน</button>
+      </div>
+      <div class="lg:col-span-3 flex justify-end gap-2 pt-1">
+        <button type="button" onclick="resetShopForm()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-semibold px-5 py-2.5 rounded-xl transition">ล้างฟอร์ม</button>
+        <button type="submit" class="gradient-btn text-white text-sm font-semibold px-6 py-2.5 rounded-xl shadow">➕ เพิ่มร้านค้า</button>
+      </div>
+      <input type="hidden" id="editShopId">
+    </form>
+
+    <div class="border-t border-slate-100 mt-5 pt-4">
+      <h3 class="font-semibold text-slate-700 flex items-center gap-2 mb-3"><span>🗑️</span> ลบร้านค้าออกจากระบบ</h3>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div class="relative">
+          <label class="text-xs font-semibold text-slate-500 mb-1 block">ค้นหาร้านค้า (รหัสร้านค้า หรือ ชื่อร้านค้า) <span class="text-red-500">*</span></label>
+          <input type="text" id="deleteShopSearchInput" oninput="handleDeleteShopSearchInput()" onfocus="handleDeleteShopSearchInput()" autocomplete="off"
+            class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm" placeholder="พิมพ์รหัสร้านค้า หรือ ชื่อร้านค้า...">
+          <div id="deleteShopSearchResults" class="hidden absolute z-20 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-56 overflow-y-auto"></div>
+          <input type="hidden" id="deleteShopSelectedId">
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-slate-500 mb-1 block">สาเหตุในการลบ <span class="text-red-500">*</span></label>
+          <textarea id="deleteShopReason" rows="1" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm" placeholder="ระบุสาเหตุ เช่น ร้านค้าปิดกิจการ, ย้ายที่ตั้ง ฯลฯ"></textarea>
+        </div>
+      </div>
+      <div id="deleteShopPreview" class="hidden mt-3 bg-red-50 border border-red-100 rounded-xl p-3 text-sm text-red-700"></div>
+      <div class="flex justify-end mt-3">
+        <button type="button" onclick="handleDeleteFromSelector()" class="gradient-btn-red text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow">🗑️ ยืนยันลบร้านค้า</button>
+      </div>
+    </div>
+
+    <div class="border-t border-slate-100 mt-5 pt-4">
+      <h3 class="font-semibold text-slate-700 flex items-center gap-2 mb-3"><span>📍</span> แก้ไขพิกัดที่ตั้งร้านค้า</h3>
+      <div class="relative mb-3">
+        <label class="text-xs font-semibold text-slate-500 mb-1 block">ค้นหาร้านค้า (รหัสร้านค้า หรือ ชื่อร้านค้า) <span class="text-red-500">*</span></label>
+        <input type="text" id="editCoordsSearchInput" oninput="handleEditCoordsSearchInput()" onfocus="handleEditCoordsSearchInput()" autocomplete="off"
+          class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm" placeholder="พิมพ์รหัสร้านค้า หรือ ชื่อร้านค้า...">
+        <div id="editCoordsSearchResults" class="hidden absolute z-20 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-56 overflow-y-auto"></div>
+        <input type="hidden" id="editCoordsSelectedId">
+      </div>
+      <div id="editCoordsFormBox" class="hidden">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="text-xs font-semibold text-slate-500 mb-1 block">ละติจูด (Lat)</label>
+            <input type="text" id="editCoordsLat" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm" placeholder="13.9126">
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-500 mb-1 block">ลองจิจูด (Lng)</label>
+            <input type="text" id="editCoordsLng" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm" placeholder="100.5106">
+          </div>
+          <div class="flex items-end">
+            <button type="button" onclick="useCurrentLocation('editCoordsLat','editCoordsLng')" class="gradient-btn-slate text-white text-xs font-semibold px-3 py-2.5 rounded-xl shadow w-full">📍 ใช้ตำแหน่งปัจจุบัน</button>
+          </div>
+        </div>
+        <div class="flex justify-end mt-3">
+          <button type="button" onclick="handleSaveCoords()" class="gradient-btn text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow">💾 บันทึกพิกัด</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ DELETED SHOPS (ADMIN ONLY) ============ -->
+  <section id="deletedShopsSection" class="hidden bg-white rounded-2xl card-shadow p-4 sm:p-5 fade-in">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+      <h2 class="font-bold text-slate-700 flex items-center gap-2"><span>🗑️</span> ร้านค้าที่ถูกลบ <span class="text-xs font-normal bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">แอดมิน</span></h2>
+      <div class="text-xs sm:text-sm text-slate-500">
+        ทั้งหมด <span id="deletedShopsCount" class="font-bold text-red-500">0</span> ร้าน
+      </div>
+    </div>
+    <div id="deletedShopsListBox" class="scroll-box space-y-2"></div>
+  </section>
+
+  <!-- ============ ALL SHOPS LIST ============ -->
+  <section class="bg-white rounded-2xl card-shadow p-4 sm:p-5">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+      <h2 class="font-bold text-slate-700 flex items-center gap-2"><span>📋</span> รายชื่อร้านค้าทั้งหมด</h2>
+      <div class="text-xs sm:text-sm text-slate-500">
+        ทั้งหมด <span id="shopTotalCount" class="font-bold text-indigo-600">0</span> ร้าน |
+        แสดง <span id="shopShownCount" class="font-bold text-indigo-600">0</span> ร้าน
+      </div>
+    </div>
+    <div class="relative mb-3">
+      <input type="text" id="shopSearchInput" oninput="renderShopList()" placeholder="🔍 ค้นหาร้านค้า (รหัส / ชื่อ / ที่อยู่ / เบอร์โทร / ประเภท / วันที่เข้าเยี่ยม / พิกัด)"
+        class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm pl-10">
+    </div>
+    <div id="shopListBox" class="scroll-box space-y-2"></div>
+    <div class="flex justify-center mt-3">
+      <button id="shopMoreBtn" onclick="showMoreShops()" class="hidden gradient-btn text-white text-sm font-semibold px-6 py-2.5 rounded-xl shadow">แสดงเพิ่มเติม</button>
+    </div>
+  </section>
+
+  <!-- ============ MAP ============ -->
+  <section class="bg-white rounded-2xl card-shadow p-4 sm:p-5">
+    <h2 class="font-bold text-slate-700 flex items-center gap-2 mb-3"><span>🗺️</span> ที่ตั้งร้านค้าบนแผนที่</h2>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+      <div class="lg:col-span-1">
+        <label class="text-xs font-semibold text-slate-500 mb-1 block">เลือกร้านค้าเพื่อดูตำแหน่ง</label>
+        <select id="mapShopSelect" onchange="updateMap()" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm mb-3">
+          <option value="">-- เลือกร้านค้า --</option>
+        </select>
+        <div id="mapShopInfo" class="text-sm text-slate-500 bg-slate-50 rounded-xl p-3 min-h-[100px]">เลือกร้านค้าเพื่อแสดงรายละเอียดตำแหน่ง</div>
+        <a id="mapExternalLink" href="#" target="_blank" class="hidden mt-3 gradient-btn-green text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow text-center block">🧭 เปิดใน Google Maps</a>
+      </div>
+      <div class="lg:col-span-2">
+        <iframe id="mapFrame" class="w-full map-frame rounded-xl border border-slate-200" src="https://maps.google.com/maps?q=Thailand&z=6&output=embed" loading="lazy"></iframe>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ VISIT ENTRY (ADMIN ONLY) ============ -->
+  <section id="visitEntrySection" class="hidden bg-white rounded-2xl card-shadow p-4 sm:p-5 fade-in">
+    <h2 class="font-bold text-slate-700 flex items-center gap-2 mb-4"><span>📝</span> บันทึกรายการเข้าเยี่ยมร้านค้า <span class="text-xs font-normal bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">แอดมิน</span></h2>
+    <form id="visitForm" onsubmit="handleAddVisit(event)" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div class="relative sm:col-span-2">
+        <label class="text-xs font-semibold text-slate-500 mb-1 block">ค้นหาร้านค้า (รหัสร้านค้า หรือ ชื่อร้านค้า / ตำบล / อำเภอ / จังหวัด) <span class="text-red-500">*</span></label>
+        <input type="text" id="visitShopSearchInput" oninput="handleVisitShopSearchInput()" onfocus="handleVisitShopSearchInput()" autocomplete="off"
+          class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm" placeholder="พิมพ์รหัสร้านค้า หรือ ชื่อร้านค้า...">
+        <div id="visitShopSearchResults" class="hidden absolute z-20 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-56 overflow-y-auto"></div>
+        <input type="hidden" id="visitShopSelectedId">
+      </div>
+      <div>
+        <label class="text-xs font-semibold text-slate-500 mb-1 block">วันที่เข้าเยี่ยม <span class="text-red-500">*</span></label>
+        <input type="date" id="visitDate" required class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm">
+      </div>
+      <div class="sm:col-span-2">
+        <label class="text-xs font-semibold text-slate-500 mb-1 block">หมายเหตุ</label>
+        <textarea id="visitNote" rows="2" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm" placeholder="รายละเอียดเพิ่มเติม..."></textarea>
+      </div>
+      <div id="visitStatusBox" class="sm:col-span-2 hidden bg-indigo-50 border border-indigo-100 rounded-xl p-3 text-sm text-indigo-700"></div>
+      <div class="sm:col-span-2 flex justify-end">
+        <button type="submit" class="gradient-btn text-white text-sm font-semibold px-6 py-2.5 rounded-xl shadow">💾 บันทึกรายการ</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- ============ VISIT HISTORY ============ -->
+  <section class="bg-white rounded-2xl card-shadow p-4 sm:p-5">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+      <h2 class="font-bold text-slate-700 flex items-center gap-2"><span>📜</span> ประวัติการเยี่ยมร้านค้า</h2>
+      <div class="text-xs sm:text-sm text-slate-500">ทั้งหมด <span id="visitHistoryTotalCount" class="font-bold text-indigo-600">0</span> รายการ</div>
+    </div>
+    <div class="scroll-box border border-slate-100 rounded-xl table-scroll">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 sticky top-0 z-10">
+          <tr class="text-left text-slate-500">
+            <th class="px-3 py-2.5 font-semibold">วันที่</th>
+            <th class="px-3 py-2.5 font-semibold">เวลา</th>
+            <th class="px-3 py-2.5 font-semibold">ชื่อร้านค้า</th>
+            <th class="px-3 py-2.5 font-semibold">ประเภท</th>
+            <th class="px-3 py-2.5 font-semibold">ที่อยู่</th>
+            <th class="px-3 py-2.5 font-semibold">เบอร์โทร</th>
+            <th class="px-3 py-2.5 font-semibold">พิกัด</th>
+            <th class="px-3 py-2.5 font-semibold">หมายเหตุ</th>
+          </tr>
+        </thead>
+        <tbody id="visitHistoryBody"></tbody>
+      </table>
+      <div id="visitHistoryEmpty" class="hidden text-center text-slate-400 py-10 text-sm">ยังไม่มีประวัติการเข้าเยี่ยม</div>
+    </div>
+  </section>
+
+  <!-- ============ SHOP SUMMARY ============ -->
+  <section class="bg-white rounded-2xl card-shadow p-4 sm:p-5">
+    <h2 class="font-bold text-slate-700 flex items-center gap-2 mb-4"><span>📊</span> สรุปร้านค้า</h2>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+      <div class="rounded-2xl p-4 bg-gradient-to-br from-emerald-50 to-green-100 border border-emerald-200">
+        <p class="text-xs font-semibold text-emerald-700 mb-1">ร้านค้าใหม่</p>
+        <p id="sumNewShops" class="text-3xl font-extrabold text-emerald-700">0</p>
+      </div>
+      <div class="rounded-2xl p-4 bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200">
+        <p class="text-xs font-semibold text-blue-700 mb-1">ร้านค้าเก่า</p>
+        <p id="sumOldShops" class="text-3xl font-extrabold text-blue-700">0</p>
+      </div>
+      <div class="rounded-2xl p-4 bg-gradient-to-br from-red-50 to-rose-100 border border-red-200">
+        <p class="text-xs font-semibold text-red-700 mb-1">ร้านค้าที่ถูกลบ</p>
+        <p id="sumDeletedShops" class="text-3xl font-extrabold text-red-700">0</p>
+      </div>
+      <div class="rounded-2xl p-4 bg-gradient-to-br from-amber-50 to-yellow-100 border border-amber-200">
+        <p class="text-xs font-semibold text-amber-700 mb-1">ร้านค้าทั้งหมด</p>
+        <p id="sumTotalShops" class="text-3xl font-extrabold text-amber-700">0</p>
+        <p class="text-[10px] text-amber-600 mt-0.5">(ใหม่ + เก่า หักร้านค้าที่ถูกลบแล้ว)</p>
+      </div>
+    </div>
+    <p class="text-xs font-semibold text-slate-500 mb-2">รายการเรียงตามวันที่เข้าเยี่ยมล่าสุด</p>
+    <div id="summaryListBox" class="scroll-box-sm space-y-2"></div>
+  </section>
+
+  <!-- ============ CHART ============ -->
+  <section class="bg-white rounded-2xl card-shadow p-4 sm:p-5">
+    <h2 class="font-bold text-slate-700 flex items-center gap-2 mb-4"><span>📈</span> กราฟสรุปข้อมูลร้านค้า</h2>
+    <div class="chart-box"><canvas id="summaryChart"></canvas></div>
+  </section>
+
+  <!-- ============ SYNC STATUS ============ -->
+  <section class="bg-white rounded-2xl card-shadow p-4 sm:p-5">
+    <h2 class="font-bold text-slate-700 flex items-center gap-2 mb-3"><span>🔄</span> สถานะการซิงค์ข้อมูล</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+      <div class="bg-slate-50 rounded-xl p-3">
+        <p class="text-slate-400 text-xs mb-1">สถานะข้อมูล</p>
+        <p id="syncDataStatus" class="font-semibold text-slate-700">รอการโหลดข้อมูล</p>
+      </div>
+      <div class="bg-slate-50 rounded-xl p-3">
+        <p class="text-slate-400 text-xs mb-1">สถานะ Google Sheet</p>
+        <p id="syncSheetStatus" class="font-semibold text-slate-700">ไม่ทราบสถานะ</p>
+      </div>
+      <div class="bg-slate-50 rounded-xl p-3">
+        <p class="text-slate-400 text-xs mb-1">เวลาซิงค์ล่าสุด</p>
+        <p id="syncLastTime" class="font-semibold text-slate-700">-</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="text-center text-xs text-slate-400 py-6">
+  © 2026 ตารางเข้าเยี่ยม และที่ตั้งร้านค้า | ผู้พัฒนา นายชนินทร์ ทวีทรัพย์มนตรี - V.1
+</footer>
+
+<script>
+/* ==================================================================
+   CONFIG
+   ================================================================== */
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzOb6YOnqBInVu1HAzYOeF_vZsPlxZ8SLnJ4GbCT4MPXCSjrkObqEf8qnNXnXsBECU1uA/exec';
+const SHEET_ID = '1bWmlLFXkNonvB5NzRsaIX17ITFZo6DJPBvvO9EUuJrQ';
+const ADMIN_USER = 'admin';
+const ADMIN_PASS = 'C1234567';
+
+const MAX_SHOWN_SHOPS_START = 30;
+const MAX_SHOWN_SHOPS_LIMIT = 100;
+const SHOP_PAGE_STEP = 30;
+
+/**
+ * รายชื่อจังหวัดแบ่งตามภาค (4 ภาค: เหนือ/ตะวันออกเฉียงเหนือ/กลาง/ใต้) พร้อมตัวย่อภาษาอังกฤษ
+ * ใช้สร้างรหัสร้านค้าอัตโนมัติ รูปแบบ: [ตัวย่อภาค][ตัวย่อจังหวัด][เลขรันนิ่ง 7 หลัก] เช่น NCNX0000001
+ */
+const THAI_PROVINCES = [
+  // ภาคเหนือ (N) — 17 จังหวัด
+  { region: 'N', regionName: 'ภาคเหนือ', code: 'CNX', name: 'เชียงใหม่' },
+  { region: 'N', regionName: 'ภาคเหนือ', code: 'CRI', name: 'เชียงราย' },
+  { region: 'N', regionName: 'ภาคเหนือ', code: 'MHS', name: 'แม่ฮ่องสอน' },
+  { region: 'N', regionName: 'ภาคเหนือ', code: 'LPG', name: 'ลำปาง' },
+  { region: 'N', regionName: 'ภาคเหนือ', code: 'LPN', name: 'ลำพูน' },
+  { region: 'N', regionName: 'ภาคเหนือ', code: 'PYO', name: 'พะเยา' },
+  { region: 'N', regionName: 'ภาคเหนือ', code: 'PRE', name: 'แพร่' },
+  { region: 'N', regionName: 'ภาคเหนือ', code: 'NAN', name: 'น่าน' },
+  { region: 'N', regionName: 'ภาคเหนือ', code: 'UTT', name: 'อุตรดิตถ์' },
+  { region: 'N', regionName: 'ภาคเหนือ', code: 'TAK', name: 'ตาก' },
+  { region: 'N', regionName: 'ภาคเหนือ', code: 'STI', name: 'สุโขทัย' },
+  { region: 'N', regionName: 'ภาคเหนือ', code: 'PLK', name: 'พิษณุโลก' },
+  { region: 'N', regionName: 'ภาคเหนือ', code: 'PCT', name: 'พิจิตร' },
+  { region: 'N', regionName: 'ภาคเหนือ', code: 'KPP', name: 'กำแพงเพชร' },
+  { region: 'N', regionName: 'ภาคเหนือ', code: 'PNB', name: 'เพชรบูรณ์' },
+  { region: 'N', regionName: 'ภาคเหนือ', code: 'NSN', name: 'นครสวรรค์' },
+  { region: 'N', regionName: 'ภาคเหนือ', code: 'UTI', name: 'อุทัยธานี' },
+
+  // ภาคตะวันออกเฉียงเหนือ (NE) — 20 จังหวัด
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'NKI', name: 'หนองคาย' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'LEI', name: 'เลย' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'NBP', name: 'หนองบัวลำภู' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'UDN', name: 'อุดรธานี' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'SNK', name: 'สกลนคร' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'NPM', name: 'นครพนม' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'BKN', name: 'บึงกาฬ' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'MDH', name: 'มุกดาหาร' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'KSN', name: 'กาฬสินธุ์' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'KKN', name: 'ขอนแก่น' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'MSK', name: 'มหาสารคาม' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'RET', name: 'ร้อยเอ็ด' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'YST', name: 'ยโสธร' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'ACR', name: 'อำนาจเจริญ' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'CYP', name: 'ชัยภูมิ' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'NRM', name: 'นครราชสีมา' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'BRM', name: 'บุรีรัมย์' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'SRN', name: 'สุรินทร์' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'SSK', name: 'ศรีสะเกษ' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'UBN', name: 'อุบลราชธานี' },
+
+  // ภาคกลาง (C) — 26 จังหวัด (รวมตะวันออกและตะวันตก)
+  { region: 'C', regionName: 'ภาคกลาง', code: 'BKK', name: 'กรุงเทพมหานคร' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'NBI', name: 'นนทบุรี' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'PTE', name: 'ปทุมธานี' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'SPK', name: 'สมุทรปราการ' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'SKN', name: 'สมุทรสาคร' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'NPT', name: 'นครปฐม' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'AYA', name: 'พระนครศรีอยุธยา' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'ATG', name: 'อ่างทอง' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'SGB', name: 'สิงห์บุรี' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'CNT', name: 'ชัยนาท' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'LRI', name: 'ลพบุรี' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'SRI', name: 'สระบุรี' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'SPB', name: 'สุพรรณบุรี' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'KRI', name: 'กาญจนบุรี' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'RBR', name: 'ราชบุรี' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'PBI', name: 'เพชรบุรี' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'PKN', name: 'ประจวบคีรีขันธ์' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'SKM', name: 'สมุทรสงคราม' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'NYK', name: 'นครนายก' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'PRI', name: 'ปราจีนบุรี' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'SKW', name: 'สระแก้ว' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'CCS', name: 'ฉะเชิงเทรา' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'CBI', name: 'ชลบุรี' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'RYG', name: 'ระยอง' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'CTI', name: 'จันทบุรี' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'TRT', name: 'ตราด' },
+
+  // ภาคใต้ (S) — 14 จังหวัด
+  { region: 'S', regionName: 'ภาคใต้', code: 'CPN', name: 'ชุมพร' },
+  { region: 'S', regionName: 'ภาคใต้', code: 'RNG', name: 'ระนอง' },
+  { region: 'S', regionName: 'ภาคใต้', code: 'SNI', name: 'สุราษฎร์ธานี' },
+  { region: 'S', regionName: 'ภาคใต้', code: 'PNA', name: 'พังงา' },
+  { region: 'S', regionName: 'ภาคใต้', code: 'HKT', name: 'ภูเก็ต' },
+  { region: 'S', regionName: 'ภาคใต้', code: 'KBI', name: 'กระบี่' },
+  { region: 'S', regionName: 'ภาคใต้', code: 'NST', name: 'นครศรีธรรมราช' },
+  { region: 'S', regionName: 'ภาคใต้', code: 'TRG', name: 'ตรัง' },
+  { region: 'S', regionName: 'ภาคใต้', code: 'PLG', name: 'พัทลุง' },
+  { region: 'S', regionName: 'ภาคใต้', code: 'STN', name: 'สตูล' },
+  { region: 'S', regionName: 'ภาคใต้', code: 'SGK', name: 'สงขลา' },
+  { region: 'S', regionName: 'ภาคใต้', code: 'PTN', name: 'ปัตตานี' },
+  { region: 'S', regionName: 'ภาคใต้', code: 'YLA', name: 'ยะลา' },
+  { region: 'S', regionName: 'ภาคใต้', code: 'NWT', name: 'นราธิวาส' },
+];
+
+/* ==================================================================
+   STATE
+   ================================================================== */
+let shops = [];      // {shopId, shopName, address, phone, paymentType, lastVisit, lat, lng, status, createdAt}
+let visits = [];      // {visitId, shopId, shopName, visitDate, visitTime, type, lat, lng, note, createdAt}
+let deletedShops = []; // {shopId, shopName, address, phone, paymentType, lastVisit, lat, lng, status, deleteReason, deletedAt, originalCreatedAt}
+let shopShowCount = MAX_SHOWN_SHOPS_START;
+let isAdmin = sessionStorage.getItem('svt_isAdmin') === 'true';
+let chartInstance = null;
+let clockIntervalId = null;
+
+/* ==================================================================
+   INIT
+   ================================================================== */
+document.addEventListener('DOMContentLoaded', () => {
+  applyAdminUI();
+  document.getElementById('visitDate').value = bangkokDateStr();
+  renderProvinceSelect();
+  initNetworkWatcher();
+  startLiveClock();
+  registerServiceWorker();
+  testConnection(true);
+  loadFromSheet(true);
+});
+
+/** สร้างตัวเลือกจังหวัดในฟอร์มเพิ่มร้านค้า จัดกลุ่มตามภาค */
+function renderProvinceSelect() {
+  const sel = document.getElementById('shopProvince');
+  if (!sel) return;
+  const regionOrder = [
+    { key: 'N', label: 'ภาคเหนือ' },
+    { key: 'NE', label: 'ภาคตะวันออกเฉียงเหนือ' },
+    { key: 'C', label: 'ภาคกลาง' },
+    { key: 'S', label: 'ภาคใต้' },
+  ];
+  let html = '<option value="">-- เลือกจังหวัด --</option>';
+  regionOrder.forEach(r => {
+    const provinces = THAI_PROVINCES.filter(p => p.region === r.key);
+    html += `<optgroup label="${esc(r.label)}">`;
+    html += provinces.map(p => `<option value="${p.region}|${p.code}">${esc(p.name)} (${p.region}${p.code})</option>`).join('');
+    html += `</optgroup>`;
+  });
+  sel.innerHTML = html;
+}
+
+/** แสดงตัวอย่างรหัสร้านค้าที่จะถูกสร้าง (คำนวณเบื้องต้นฝั่ง frontend, ค่าจริงยืนยันจาก backend ตอนบันทึก) */
+function updateShopCodePreview() {
+  const val = document.getElementById('shopProvince').value;
+  const preview = document.getElementById('shopCodePreview');
+  if (!val) { preview.textContent = 'เลือกจังหวัดก่อน'; return; }
+  const [region, province] = val.split('|');
+  const prefix = region + province;
+  const next = nextSequenceForPrefix(prefix);
+  preview.textContent = prefix + String(next).padStart(7, '0') + ' (ตัวอย่าง)';
+}
+
+/** หาลำดับถัดไปของรหัสร้านค้าตาม prefix ภาค+จังหวัด จากข้อมูลร้านค้าปัจจุบัน + ร้านค้าที่ถูกลบ (กันเลขซ้ำ) */
+function nextSequenceForPrefix(prefix) {
+  let maxSeq = 0;
+  [...shops, ...deletedShops].forEach(s => {
+    const id = String(s.shopId || '');
+    if (id.startsWith(prefix)) {
+      const numPart = id.slice(prefix.length);
+      const n = parseInt(numPart, 10);
+      if (!isNaN(n) && n > maxSeq) maxSeq = n;
+    }
+  });
+  return maxSeq + 1;
+}
+
+/**
+ * ลงทะเบียน Service Worker เพื่อให้แอปติดตั้งเป็นไอคอนหน้าจอโฮมได้ (PWA)
+ * และเปิดหน้าตาแอปได้เร็ว/มั่นคงขึ้นแม้สัญญาณอ่อน — ทำงานเฉพาะเมื่อเปิดผ่าน
+ * https:// หรือ http://localhost เท่านั้น (ข้อกำหนดความปลอดภัยของเบราว์เซอร์)
+ * ถ้าเปิดไฟล์ตรงๆ แบบ file:// จะข้ามส่วนนี้ไปเงียบๆ โดยไม่กระทบการทำงานอื่น
+ */
+function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  if (location.protocol !== 'https:' && location.hostname !== 'localhost') return;
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+/* ==================================================================
+   INSTALL AS APP ICON (PWA "Add to Home Screen")
+   - Android/Chrome/Edge: uses the native beforeinstallprompt flow
+   - iOS Safari: shows step-by-step instructions (Apple doesn't support
+     the native prompt, so Share > Add to Home Screen is the only way)
+   ================================================================== */
+let deferredInstallPrompt = null;
+
+function isRunningStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+function isIOSDevice() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+}
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  if (!isRunningStandalone()) document.getElementById('installAppBtn').classList.remove('hidden');
+});
+window.addEventListener('appinstalled', () => {
+  document.getElementById('installAppBtn').classList.add('hidden');
+  deferredInstallPrompt = null;
+});
+document.addEventListener('DOMContentLoaded', () => {
+  // แสดงปุ่มติดตั้งบน iOS เสมอ (ไม่มี beforeinstallprompt) ถ้ายังไม่ได้ติดตั้ง และเปิดผ่าน https จริง
+  if (isIOSDevice() && !isRunningStandalone() && location.protocol === 'https:') {
+    document.getElementById('installAppBtn').classList.remove('hidden');
+  }
+});
+
+async function installApp() {
+  if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt();
+    const choice = await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    if (choice.outcome === 'accepted') {
+      document.getElementById('installAppBtn').classList.add('hidden');
+    }
+    return;
+  }
+
+  if (isIOSDevice()) {
+    Swal.fire({
+      title: '📲 ติดตั้งแอปลงหน้าจอโฮม (iOS)',
+      html: `
+        <div class="text-left text-sm space-y-2">
+          <p>1. แตะไอคอน <b>แชร์ (Share)</b> <span class="inline-block">⬆️</span> ที่แถบด้านล่างของ Safari</p>
+          <p>2. เลื่อนหาเมนู แล้วแตะ <b>"เพิ่มไปยังหน้าจอโฮม" (Add to Home Screen)</b></p>
+          <p>3. แตะ <b>"เพิ่ม" (Add)</b> ที่มุมขวาบน</p>
+          <p class="text-xs text-slate-400 pt-1">* ต้องเปิดผ่าน Safari เท่านั้น (เมนูแชร์ในเบราว์เซอร์อื่นบน iOS จะไม่มีตัวเลือกนี้)</p>
+        </div>
+      `,
+      confirmButtonText: 'เข้าใจแล้ว',
+      confirmButtonColor: '#6366f1'
+    });
+    return;
+  }
+
+  Swal.fire({
+    icon: 'info', title: 'ติดตั้งแอป',
+    text: 'เปิดเมนูของเบราว์เซอร์ แล้วเลือก "ติดตั้งแอป" หรือ "เพิ่มไปยังหน้าจอโฮม"',
+    confirmButtonColor: '#6366f1'
+  });
+}
+
+/** นาฬิกาดิจิทัลแบบเรียลไทม์ (HH:MM:SS) อิงเขตเวลาไทย อัปเดตทุกวินาที ให้ตรงกันทั้งแอป */
+function startLiveClock() {
+  const el = document.getElementById('liveClockText');
+  if (!el) return;
+  const tick = () => { el.textContent = bangkokTimeStr(new Date()); };
+  tick();
+  if (clockIntervalId) clearInterval(clockIntervalId);
+  clockIntervalId = setInterval(tick, 1000);
+}
+
+/* ==================================================================
+   NETWORK RESILIENCE
+   Handles flaky mobile connections (2G/3G/4G/5G/Wi-Fi, any device) gracefully:
+   - Adds request timeout so slow networks don't hang forever
+   - Retries automatically (up to 2 times, with backoff) on transient network failure
+   - Reacts to browser online/offline events in real time
+   ================================================================== */
+const FETCH_TIMEOUT_MS = 20000;
+const FETCH_MAX_RETRIES = 2;
+
+async function apiFetch(url, options, attempt) {
+  attempt = attempt || 0;
+  if (!navigator.onLine) {
+    throw new Error('ไม่มีสัญญาณอินเทอร์เน็ต กรุณาตรวจสอบการเชื่อมต่อ Wi-Fi หรือมือถือของคุณ');
+  }
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, Object.assign({}, options, { signal: controller.signal, cache: 'no-store' }));
+    clearTimeout(timeoutId);
+    if (!res.ok) throw new Error('เซิร์ฟเวอร์ตอบกลับผิดพลาด (HTTP ' + res.status + ')');
+    return res;
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (attempt < FETCH_MAX_RETRIES) {
+      // สัญญาณกระตุกชั่วคราว (พบบ่อยบนเครือข่ายมือถือ/Wi-Fi สาธารณะ) — ลองใหม่พร้อมหน่วงเวลาเพิ่มขึ้นทุกครั้ง
+      await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+      return apiFetch(url, options, attempt + 1);
+    }
+    if (err.name === 'AbortError') {
+      throw new Error('การเชื่อมต่อหมดเวลา สัญญาณอินเทอร์เน็ตอาจไม่เสถียร กรุณาลองใหม่อีกครั้ง');
+    }
+    throw new Error('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาตรวจสอบสัญญาณอินเทอร์เน็ต');
+  }
+}
+
+function initNetworkWatcher() {
+  const banner = document.getElementById('offlineBanner');
+  window.addEventListener('offline', () => {
+    banner.classList.remove('hidden');
+    setConnStatus('offline', 'ออฟไลน์');
+  });
+  window.addEventListener('online', () => {
+    banner.classList.add('hidden');
+    Swal.fire({ icon: 'success', title: 'กลับมาออนไลน์แล้ว', text: 'กำลังซิงค์ข้อมูลล่าสุด...', timer: 1400, showConfirmButton: false });
+    loadFromSheet(true);
+  });
+  if (!navigator.onLine) {
+    banner.classList.remove('hidden');
+    setConnStatus('offline', 'ออฟไลน์');
+  }
+}
+
+/* ==================================================================
+   ADMIN AUTH
+   ================================================================== */
+function applyAdminUI() {
+  document.getElementById('shopManageSection').classList.toggle('hidden', !isAdmin);
+  document.getElementById('deletedShopsSection').classList.toggle('hidden', !isAdmin);
+  document.getElementById('visitEntrySection').classList.toggle('hidden', !isAdmin);
+  document.getElementById('adminLoginBtn').classList.toggle('hidden', isAdmin);
+  document.getElementById('adminLogoutBtn').classList.toggle('hidden', !isAdmin);
+}
+
+function openAdminLogin() {
+  Swal.fire({
+    title: '🔐 เข้าสู่ระบบแอดมิน',
+    html: `
+      <input id="swalUser" class="swal2-input" placeholder="ชื่อผู้ใช้">
+      <input id="swalPass" type="password" class="swal2-input" placeholder="รหัสผ่าน">
+    `,
+    confirmButtonText: 'เข้าสู่ระบบ',
+    confirmButtonColor: '#6366f1',
+    showCancelButton: true,
+    cancelButtonText: 'ยกเลิก',
+    focusConfirm: false,
+    preConfirm: () => {
+      const u = document.getElementById('swalUser').value.trim();
+      const p = document.getElementById('swalPass').value.trim();
+      if (u !== ADMIN_USER || p !== ADMIN_PASS) {
+        Swal.showValidationMessage('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+        return false;
+      }
+      return true;
+    }
+  }).then(res => {
+    if (res.isConfirmed) {
+      isAdmin = true;
+      sessionStorage.setItem('svt_isAdmin', 'true');
+      applyAdminUI();
+      Swal.fire({ icon: 'success', title: 'เข้าสู่ระบบสำเร็จ', timer: 1400, showConfirmButton: false });
+    }
+  });
+}
+
+function adminLogout() {
+  Swal.fire({
+    icon: 'question', title: 'ออกจากระบบแอดมิน?', showCancelButton: true,
+    confirmButtonText: 'ออกจากระบบ', cancelButtonText: 'ยกเลิก', confirmButtonColor: '#ef4444'
+  }).then(res => {
+    if (res.isConfirmed) {
+      isAdmin = false;
+      sessionStorage.removeItem('svt_isAdmin');
+      applyAdminUI();
+      Swal.fire({ icon: 'success', title: 'ออกจากระบบแล้ว', timer: 1200, showConfirmButton: false });
+    }
+  });
+}
+
+/* ==================================================================
+   CONNECTION STATUS
+   ================================================================== */
+function setConnStatus(state, text) {
+  const dot = document.getElementById('connDot');
+  const label = document.getElementById('connText');
+  dot.className = 'status-dot ' + (state === 'online' ? 'dot-green' : state === 'offline' ? 'dot-red' : 'dot-yellow');
+  label.textContent = text;
+  document.getElementById('syncSheetStatus').textContent = state === 'online' ? '🟢 เชื่อมต่อสำเร็จ' : state === 'offline' ? '🔴 ขาดการเชื่อมต่อ' : '🟡 กำลังตรวจสอบ';
+}
+
+async function testConnection(silent) {
+  setConnStatus('loading', 'กำลังเชื่อมต่อ...');
+  try {
+    const res = await apiFetch(SCRIPT_URL + '?action=ping');
+    const data = await res.json();
+    if (data.success) {
+      setConnStatus('online', 'เชื่อมต่อสำเร็จ');
+      if (!silent) Swal.fire({ icon: 'success', title: 'เชื่อมต่อสำเร็จ', text: 'เชื่อมต่อกับ Google Sheet เรียบร้อยแล้ว', confirmButtonColor: '#6366f1' });
+    } else {
+      throw new Error(data.error || 'เชื่อมต่อไม่สำเร็จ');
+    }
+  } catch (err) {
+    setConnStatus('offline', 'ออฟไลน์');
+    if (!silent) Swal.fire({ icon: 'error', title: 'เชื่อมต่อไม่สำเร็จ', text: err.message, confirmButtonColor: '#ef4444' });
+  }
+}
+
+/* ==================================================================
+   LOAD DATA FROM SHEET
+   ================================================================== */
+async function loadFromSheet(silent) {
+  setConnStatus('loading', 'กำลังโหลดข้อมูล...');
+  document.getElementById('syncDataStatus').textContent = 'กำลังโหลด...';
+  try {
+    const res = await apiFetch(SCRIPT_URL + '?action=getAll');
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'โหลดข้อมูลไม่สำเร็จ');
+
+    shops = (data.shops || []).map(s => ({ ...s, lat: s.lat ? Number(s.lat) : '', lng: s.lng ? Number(s.lng) : '' }));
+    visits = (data.visits || []).map(v => ({ ...v, lat: v.lat ? Number(v.lat) : '', lng: v.lng ? Number(v.lng) : '' }));
+    deletedShops = (data.deletedShops || []).map(s => ({ ...s, lat: s.lat ? Number(s.lat) : '', lng: s.lng ? Number(s.lng) : '' }));
+
+    setConnStatus('online', 'ออนไลน์');
+    document.getElementById('syncDataStatus').textContent = '✅ ข้อมูลเป็นปัจจุบัน';
+    document.getElementById('syncLastTime').textContent = fmtDateTime(new Date()) + ' น.';
+
+    refreshAll();
+    if (!silent) Swal.fire({ icon: 'success', title: 'โหลดข้อมูลสำเร็จ', text: `พบร้านค้า ${shops.length} ร้าน / รายการเข้าเยี่ยม ${visits.length} รายการ`, timer: 1800, showConfirmButton: false });
+  } catch (err) {
+    setConnStatus('offline', 'ออฟไลน์');
+    document.getElementById('syncDataStatus').textContent = '❌ โหลดข้อมูลไม่สำเร็จ';
+    Swal.fire({ icon: 'error', title: 'โหลดข้อมูลไม่สำเร็จ', text: err.message, confirmButtonColor: '#ef4444' });
+  }
+}
+
+function refreshAll() {
+  renderShopList();
+  renderMapSelect();
+  renderVisitHistory();
+  renderSummary();
+  renderChart();
+  renderDeletedShopsList();
+  updateShopCodePreview();
+}
+
+/* ==================================================================
+   UTILS
+   ================================================================== */
+const APP_TIMEZONE = 'Asia/Bangkok'; // ประเทศไทย (UTC+7) - ใช้อ้างอิงวัน-เวลาทั้งหมดในแอป
+
+/** คืนค่าวันที่ปัจจุบันตามเขตเวลาไทย รูปแบบ 'YYYY-MM-DD' (ใช้กับ input type=date) */
+function bangkokDateStr(date) {
+  date = date || new Date();
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: APP_TIMEZONE, year: 'numeric', month: '2-digit', day: '2-digit'
+  }).format(date);
+}
+/** คืนค่าเวลาปัจจุบันตามเขตเวลาไทย รูปแบบ 'HH:MM:SS' */
+function bangkokTimeStr(date) {
+  date = date || new Date();
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: APP_TIMEZONE, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+  }).format(date);
+}
+/** แปลงวันที่ (string 'YYYY-MM-DD' หรือ ISO) ให้เป็นค่าจำนวนวัน สำหรับใช้เปรียบเทียบ โดยยึดปฏิทินเขตเวลาไทยเสมอ */
+function bangkokDayIndex(dateInput) {
+  const dStr = bangkokDateStr(new Date(dateInput));
+  const [y, m, d] = dStr.split('-').map(Number);
+  return Math.floor(Date.UTC(y, m - 1, d) / 86400000);
+}
+
+/** ดึงค่า HH:mm:ss จากค่าที่อาจเป็น string 'HH:mm[:ss]', Date object, หรือ ISO timestamp ที่ Google Sheet ส่งกลับมา */
+function extractTimeParts(t) {
+  if (t === null || t === undefined || t === '') return null;
+  // Date object (Google Sheets มักส่งค่าเซลล์เวลากลับมาเป็น Date, ค่าเช่น 1899-12-30T07:59:56.000Z)
+  if (t instanceof Date && !isNaN(t)) {
+    return {
+      hh: String(t.getUTCHours()).padStart(2, '0'),
+      mm: String(t.getUTCMinutes()).padStart(2, '0'),
+      ss: String(t.getUTCSeconds()).padStart(2, '0')
+    };
+  }
+  const str = String(t).trim();
+  // ISO timestamp string เช่น '1899-12-30T07:59:56.000Z' หรือวันที่เต็มรูปแบบอื่นๆ ที่มี "T"
+  if (str.includes('T') || /^\d{4}-\d{2}-\d{2}/.test(str)) {
+    const d = new Date(str);
+    if (!isNaN(d)) {
+      return {
+        hh: String(d.getUTCHours()).padStart(2, '0'),
+        mm: String(d.getUTCMinutes()).padStart(2, '0'),
+        ss: String(d.getUTCSeconds()).padStart(2, '0')
+      };
+    }
+  }
+  // plain 'HH:mm' หรือ 'HH:mm:ss'
+  const parts = str.split(':');
+  if (parts.length < 2 || isNaN(parseInt(parts[0], 10))) return null;
+  return {
+    hh: String(parts[0]).padStart(2, '0'),
+    mm: String(parts[1]).padStart(2, '0'),
+    ss: String(parts[2] || '00').padStart(2, '0')
+  };
+}
+function esc(str) {
+  return String(str ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+/** จัดรูปแบบเวลาแบบ 24 ชม. ธรรมดา (ไม่มีคำว่า "น.") สำหรับใช้ใน PDF ที่ไม่รองรับฟอนต์ไทยเต็มรูปแบบ */
+function fmtTimePlain(t) {
+  const p = extractTimeParts(t);
+  if (!p) return '-';
+  return `${p.hh}:${p.mm}:${p.ss}`;
+}
+
+function fmtDate(d) {
+  if (!d) return '-';
+  const date = new Date(d);
+  if (isNaN(date)) return d;
+  return date.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric', timeZone: APP_TIMEZONE });
+}
+function fmtDateTime(d) {
+  if (!d) return '-';
+  const date = new Date(d);
+  if (isNaN(date)) return d;
+  return date.toLocaleString('th-TH', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: APP_TIMEZONE });
+}
+function daysAgo(d) {
+  if (!d) return null;
+  const date = new Date(d);
+  if (isNaN(date)) return null;
+  const diff = bangkokDayIndex(new Date()) - bangkokDayIndex(date);
+  return diff;
+}
+/** จัดรูปแบบเวลาให้เป็น 24 ชม. พร้อมวินาที เช่น '13:00:00 น.' รองรับทั้ง string, Date object และ ISO timestamp */
+function fmtTime(t) {
+  const p = extractTimeParts(t);
+  if (!p) return '-';
+  return `${p.hh}:${p.mm}:${p.ss} น.`;
+}
+function visitStatusBadge(lastVisit) {
+  const days = daysAgo(lastVisit);
+  if (days === null) return `<span class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">ยังไม่เข้าเยี่ยม</span>`;
+  if (days <= 7) return `<span class="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">เยี่ยมล่าสุด ${days} วันก่อน</span>`;
+  if (days <= 30) return `<span class="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">เยี่ยมล่าสุด ${days} วันก่อน</span>`;
+  return `<span class="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">เยี่ยมล่าสุด ${days} วันก่อน</span>`;
+}
+function shopStatusLabel(status) {
+  return status === 'new'
+    ? `<span class="text-xs px-2 py-0.5 rounded-full badge-new font-semibold">ร้านใหม่</span>`
+    : `<span class="text-xs px-2 py-0.5 rounded-full badge-old font-semibold">ร้านเก่า</span>`;
+}
+function typeLabel(type) {
+  return type === 'เงินสด'
+    ? `<span class="text-xs px-2 py-0.5 rounded-full badge-cash font-semibold">💵 เงินสด</span>`
+    : `<span class="text-xs px-2 py-0.5 rounded-full badge-credit font-semibold">💳 เครดิต</span>`;
+}
+function mapsLink(lat, lng) {
+  if (!lat || !lng) return null;
+  return `https://www.google.com/maps?q=${lat},${lng}`;
+}
+function getShopById(id) { return shops.find(s => String(s.shopId) === String(id)); }
+
+/* sort shops by lastVisit desc (nulls last) */
+function sortedShops() {
+  return [...shops].sort((a, b) => {
+    const da = a.lastVisit ? new Date(a.lastVisit).getTime() : -1;
+    const db = b.lastVisit ? new Date(b.lastVisit).getTime() : -1;
+    return db - da;
+  });
+}
+
+/* ==================================================================
+   SHOP LIST + SEARCH
+   ================================================================== */
+function renderShopList() {
+  const term = document.getElementById('shopSearchInput').value.trim().toLowerCase();
+  let list = sortedShops();
+
+  if (term) {
+    list = list.filter(s =>
+      String(s.shopId).toLowerCase().includes(term) ||
+      String(s.shopName).toLowerCase().includes(term) ||
+      String(s.address).toLowerCase().includes(term) ||
+      String(s.phone).toLowerCase().includes(term) ||
+      String(s.paymentType).toLowerCase().includes(term) ||
+      String(s.lastVisit).toLowerCase().includes(term) ||
+      `${s.lat},${s.lng}`.toLowerCase().includes(term)
+    );
+  }
+
+  const total = list.length;
+  const shown = Math.min(shopShowCount, MAX_SHOWN_SHOPS_LIMIT, total);
+  const box = document.getElementById('shopListBox');
+
+  if (total === 0) {
+    box.innerHTML = `<div class="text-center text-slate-400 py-10 text-sm">ไม่พบร้านค้า</div>`;
+  } else {
+    box.innerHTML = list.slice(0, shown).map(s => {
+      const link = mapsLink(s.lat, s.lng);
+      return `
+      <div class="fade-in flex flex-wrap items-center justify-between gap-2 border border-slate-100 rounded-xl p-3 hover:bg-slate-50 transition">
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-xs font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">${esc(s.shopId)}</span>
+            <p class="font-semibold text-slate-700 truncate">${esc(s.shopName)}</p>
+            ${shopStatusLabel(s.status)}
+            ${s.paymentType ? typeLabel(s.paymentType) : ''}
+            ${visitStatusBadge(s.lastVisit)}
+          </div>
+          <p class="text-xs text-slate-400 truncate">📍 ${esc(s.address)} ${s.phone ? '| 📞 ' + esc(s.phone) : ''}</p>
+          <p class="text-xs text-slate-400 flex items-center flex-wrap gap-x-1">
+            🗓️ เข้าเยี่ยมล่าสุด: ${fmtDate(s.lastVisit) || 'ยังไม่มีข้อมูล'}
+            ${s.lat && s.lng ? `| 🌐 ${s.lat}, ${s.lng}` : '| <span class="text-red-400">ยังไม่มีพิกัด</span>'}
+            ${link ? `| <a href="${link}" target="_blank" class="text-indigo-600 hover:underline font-medium">🗺️ เปิดในแผนที่</a>` : ''}
+          </p>
+        </div>
+        <div class="flex gap-1.5 flex-shrink-0">
+          <button onclick="openHistoryPopup('${esc(s.shopId)}')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-xs font-semibold px-3 py-2 rounded-lg transition">📜 ประวัติ</button>
+          ${isAdmin ? `
+          <button onclick="selectShopForVisit('${esc(s.shopId)}')" class="gradient-btn-green text-white text-xs font-semibold px-3 py-2 rounded-lg shadow">➕ เพิ่ม</button>
+          <button onclick="jumpToDeleteShop('${esc(s.shopId)}')" class="gradient-btn-red text-white text-xs font-semibold px-3 py-2 rounded-lg shadow">🗑️</button>` : ''}
+        </div>
+      </div>
+    `;
+    }).join('');
+  }
+
+  document.getElementById('shopTotalCount').textContent = total;
+  document.getElementById('shopShownCount').textContent = shown;
+  document.getElementById('shopMoreBtn').classList.toggle('hidden', shown >= Math.min(total, MAX_SHOWN_SHOPS_LIMIT));
+}
+
+function showMoreShops() {
+  shopShowCount = Math.min(shopShowCount + SHOP_PAGE_STEP, MAX_SHOWN_SHOPS_LIMIT);
+  renderShopList();
+}
+
+/* ==================================================================
+   SHOP FORM (ADD/EDIT)
+   ================================================================== */
+function resetShopForm() {
+  document.getElementById('shopForm').reset();
+  document.getElementById('editShopId').value = '';
+  document.getElementById('shopCodePreview').textContent = 'เลือกจังหวัดก่อน';
+}
+
+function useCurrentLocation(latId, lngId) {
+  if (!navigator.geolocation) {
+    Swal.fire({ icon: 'error', title: 'ไม่รองรับ', text: 'อุปกรณ์นี้ไม่รองรับการระบุตำแหน่ง' });
+    return;
+  }
+  Swal.fire({ title: 'กำลังค้นหาตำแหน่ง...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+  navigator.geolocation.getCurrentPosition(pos => {
+    document.getElementById(latId).value = pos.coords.latitude.toFixed(6);
+    document.getElementById(lngId).value = pos.coords.longitude.toFixed(6);
+    Swal.close();
+  }, err => {
+    Swal.fire({ icon: 'error', title: 'ไม่สามารถระบุตำแหน่งได้', text: err.message });
+  });
+}
+
+async function handleAddShop(e) {
+  e.preventDefault();
+  const provinceVal = document.getElementById('shopProvince').value;
+  const shopName = document.getElementById('shopName').value.trim();
+  const address = document.getElementById('shopAddress').value.trim();
+  const phone = document.getElementById('shopPhone').value.trim();
+  const paymentType = document.getElementById('shopPaymentType').value;
+  const lastVisit = document.getElementById('shopLastVisit').value;
+  const lat = document.getElementById('shopLat').value.trim();
+  const lng = document.getElementById('shopLng').value.trim();
+
+  if (!provinceVal || !shopName || !address || !paymentType) {
+    Swal.fire({ icon: 'warning', title: 'ข้อมูลไม่ครบถ้วน', text: 'กรุณาเลือกจังหวัด และกรอกชื่อ ที่อยู่ ประเภท (เงินสด/เครดิต) ของร้านค้าให้ครบ' });
+    return;
+  }
+  const [region, province] = provinceVal.split('|');
+
+  Swal.fire({ title: 'กำลังบันทึก...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+  try {
+    const payload = { action: 'addShop', data: { region, province, shopName, address, phone, paymentType, lastVisit, lat, lng, status: 'new' } };
+    const res = await apiFetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'บันทึกไม่สำเร็จ');
+
+    Swal.fire({ icon: 'success', title: 'เพิ่มร้านค้าสำเร็จ', html: `รหัสร้านค้าที่สร้าง: <b class="font-mono">${esc(data.shopId || '')}</b>`, timer: 2200, showConfirmButton: false });
+    resetShopForm();
+    shopShowCount = MAX_SHOWN_SHOPS_START;
+    await loadFromSheet(true);
+  } catch (err) {
+    Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.message });
+  }
+}
+
+function confirmDeleteShop(shopId, reason) {
+  const shop = getShopById(shopId);
+  Swal.fire({
+    icon: 'warning', title: 'ยืนยันการลบร้านค้า?',
+    html: `ต้องการลบร้านค้า <b>${esc(shop ? shop.shopName : shopId)}</b> ใช่หรือไม่?<br>
+           <span class="text-xs text-slate-500">สาเหตุ: ${esc(reason)}</span><br>
+           <span class="text-xs text-red-500">การลบไม่สามารถย้อนกลับได้</span>`,
+    showCancelButton: true, confirmButtonText: 'ลบร้านค้า', cancelButtonText: 'ยกเลิก', confirmButtonColor: '#ef4444'
+  }).then(async res => {
+    if (!res.isConfirmed) return;
+    Swal.fire({ title: 'กำลังลบ...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+    try {
+      const r = await apiFetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'deleteShop', shopId, reason }) });
+      const data = await r.json();
+      if (!data.success) throw new Error(data.error || 'ลบไม่สำเร็จ');
+      Swal.fire({ icon: 'success', title: 'ลบร้านค้าสำเร็จ', timer: 1200, showConfirmButton: false });
+      resetDeleteShopForm();
+      await loadFromSheet(true);
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.message });
+    }
+  });
+}
+
+/* ==================================================================
+   DELETE SHOP: search by code or name + reason (Admin - Shop Management section)
+   ================================================================== */
+function handleDeleteShopSearchInput() {
+  const term = document.getElementById('deleteShopSearchInput').value.trim().toLowerCase();
+  const resultsBox = document.getElementById('deleteShopSearchResults');
+  document.getElementById('deleteShopSelectedId').value = '';
+  document.getElementById('deleteShopPreview').classList.add('hidden');
+
+  if (!term) { resultsBox.classList.add('hidden'); resultsBox.innerHTML = ''; return; }
+
+  const matches = sortedShops().filter(s =>
+    String(s.shopId).toLowerCase().includes(term) || String(s.shopName).toLowerCase().includes(term)
+  ).slice(0, 20);
+
+  if (matches.length === 0) {
+    resultsBox.innerHTML = `<div class="px-3 py-2.5 text-xs text-slate-400">ไม่พบร้านค้าที่ตรงกับคำค้นหา</div>`;
+  } else {
+    resultsBox.innerHTML = matches.map(s => `
+      <button type="button" onclick="selectDeleteShop('${esc(s.shopId)}')" class="w-full text-left px-3 py-2.5 hover:bg-slate-50 border-b border-slate-50 last:border-0">
+        <span class="text-xs font-mono text-slate-400">${esc(s.shopId)}</span>
+        <span class="text-sm font-medium text-slate-700 ml-2">${esc(s.shopName)}</span>
+      </button>
+    `).join('');
+  }
+  resultsBox.classList.remove('hidden');
+}
+
+/** เมื่อกดปุ่มลบด่วนจากการ์ดร้านค้า ให้เลื่อนไปยังส่วนลบร้านค้า พร้อมเลือกร้านค้าไว้ล่วงหน้า และให้กรอกสาเหตุก่อนยืนยัน */
+function jumpToDeleteShop(shopId) {
+  if (!isAdmin) return;
+  document.getElementById('shopManageSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  selectDeleteShop(shopId);
+  setTimeout(() => document.getElementById('deleteShopReason').focus(), 400);
+}
+
+function selectDeleteShop(shopId) {
+  const shop = getShopById(shopId);
+  if (!shop) return;
+  document.getElementById('deleteShopSelectedId').value = shopId;
+  document.getElementById('deleteShopSearchInput').value = `${shop.shopId} — ${shop.shopName}`;
+  document.getElementById('deleteShopSearchResults').classList.add('hidden');
+
+  const visitCount = visits.filter(v => String(v.shopId) === String(shopId)).length;
+  const box = document.getElementById('deleteShopPreview');
+  box.classList.remove('hidden');
+  box.innerHTML = `
+    <p class="font-semibold mb-1">⚠️ ตรวจสอบก่อนลบ</p>
+    <p class="text-xs">รหัส: <b>${esc(shop.shopId)}</b> | ชื่อ: <b>${esc(shop.shopName)}</b></p>
+    <p class="text-xs">ที่อยู่: ${esc(shop.address || '-')}</p>
+    <p class="text-xs">สถานะ: ${shop.status === 'new' ? 'ร้านใหม่' : 'ร้านเก่า'} | ประเภท: ${esc(shop.paymentType || 'ไม่ระบุ')}</p>
+    <p class="text-xs">ประวัติเข้าเยี่ยมที่ผูกกับร้านนี้: <b>${visitCount}</b> รายการ (จะยังคงอยู่ในประวัติ แต่ร้านค้าจะถูกลบออกจากรายชื่อ)</p>
+  `;
+}
+
+function resetDeleteShopForm() {
+  document.getElementById('deleteShopSearchInput').value = '';
+  document.getElementById('deleteShopSelectedId').value = '';
+  document.getElementById('deleteShopReason').value = '';
+  document.getElementById('deleteShopPreview').classList.add('hidden');
+  document.getElementById('deleteShopSearchResults').classList.add('hidden');
+}
+
+function handleDeleteFromSelector() {
+  const shopId = document.getElementById('deleteShopSelectedId').value;
+  const reason = document.getElementById('deleteShopReason').value.trim();
+
+  if (!shopId) {
+    Swal.fire({ icon: 'warning', title: 'กรุณาเลือกร้านค้า', text: 'โปรดค้นหาและเลือกร้านค้าที่ต้องการลบก่อน' });
+    return;
+  }
+  if (!reason) {
+    Swal.fire({ icon: 'warning', title: 'กรุณาระบุสาเหตุ', text: 'โปรดกรอกสาเหตุในการลบร้านค้า' });
+    return;
+  }
+  confirmDeleteShop(shopId, reason);
+}
+
+/* ==================================================================
+   EDIT SHOP COORDINATES (Admin - Shop Management section)
+   ================================================================== */
+function handleEditCoordsSearchInput() {
+  const term = document.getElementById('editCoordsSearchInput').value.trim().toLowerCase();
+  const resultsBox = document.getElementById('editCoordsSearchResults');
+  document.getElementById('editCoordsSelectedId').value = '';
+  document.getElementById('editCoordsFormBox').classList.add('hidden');
+
+  if (!term) { resultsBox.classList.add('hidden'); resultsBox.innerHTML = ''; return; }
+
+  const matches = sortedShops().filter(s =>
+    String(s.shopId).toLowerCase().includes(term) || String(s.shopName).toLowerCase().includes(term)
+  ).slice(0, 20);
+
+  if (matches.length === 0) {
+    resultsBox.innerHTML = `<div class="px-3 py-2.5 text-xs text-slate-400">ไม่พบร้านค้าที่ตรงกับคำค้นหา</div>`;
+  } else {
+    resultsBox.innerHTML = matches.map(s => `
+      <button type="button" onclick="selectEditCoordsShop('${esc(s.shopId)}')" class="w-full text-left px-3 py-2.5 hover:bg-slate-50 border-b border-slate-50 last:border-0">
+        <span class="text-xs font-mono text-slate-400">${esc(s.shopId)}</span>
+        <span class="text-sm font-medium text-slate-700 ml-2">${esc(s.shopName)}</span>
+      </button>
+    `).join('');
+  }
+  resultsBox.classList.remove('hidden');
+}
+
+function selectEditCoordsShop(shopId) {
+  const shop = getShopById(shopId);
+  if (!shop) return;
+  document.getElementById('editCoordsSelectedId').value = shopId;
+  document.getElementById('editCoordsSearchInput').value = `${shop.shopId} — ${shop.shopName}`;
+  document.getElementById('editCoordsSearchResults').classList.add('hidden');
+  document.getElementById('editCoordsLat').value = shop.lat || '';
+  document.getElementById('editCoordsLng').value = shop.lng || '';
+  document.getElementById('editCoordsFormBox').classList.remove('hidden');
+}
+
+async function handleSaveCoords() {
+  const shopId = document.getElementById('editCoordsSelectedId').value;
+  const lat = document.getElementById('editCoordsLat').value.trim();
+  const lng = document.getElementById('editCoordsLng').value.trim();
+
+  if (!shopId) {
+    Swal.fire({ icon: 'warning', title: 'กรุณาเลือกร้านค้า', text: 'โปรดค้นหาและเลือกร้านค้าที่ต้องการแก้ไขพิกัดก่อน' });
+    return;
+  }
+  if (!lat || !lng) {
+    Swal.fire({ icon: 'warning', title: 'กรุณากรอกพิกัด', text: 'โปรดกรอกละติจูดและลองจิจูดให้ครบ' });
+    return;
+  }
+
+  Swal.fire({ title: 'กำลังบันทึกพิกัด...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+  try {
+    const payload = { action: 'updateShop', data: { shopId, lat, lng } };
+    const res = await apiFetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'บันทึกพิกัดไม่สำเร็จ');
+
+    Swal.fire({ icon: 'success', title: 'บันทึกพิกัดสำเร็จ', timer: 1400, showConfirmButton: false });
+    document.getElementById('editCoordsSearchInput').value = '';
+    document.getElementById('editCoordsSelectedId').value = '';
+    document.getElementById('editCoordsFormBox').classList.add('hidden');
+    await loadFromSheet(true);
+  } catch (err) {
+    Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.message });
+  }
+}
+
+/* ==================================================================
+   DELETED SHOPS LIST (Admin)
+   ================================================================== */
+function sortedDeletedShops() {
+  return [...deletedShops].sort((a, b) => {
+    const da = a.deletedAt ? new Date(a.deletedAt).getTime() : 0;
+    const db = b.deletedAt ? new Date(b.deletedAt).getTime() : 0;
+    return db - da;
+  });
+}
+
+function renderDeletedShopsList() {
+  const box = document.getElementById('deletedShopsListBox');
+  const countEl = document.getElementById('deletedShopsCount');
+  if (!box || !countEl) return;
+
+  const list = sortedDeletedShops();
+  countEl.textContent = list.length;
+
+  if (list.length === 0) {
+    box.innerHTML = `<div class="text-center text-slate-400 py-10 text-sm">ยังไม่มีร้านค้าที่ถูกลบ</div>`;
+    return;
+  }
+
+  box.innerHTML = list.map(s => `
+    <div class="fade-in border border-red-100 bg-red-50/40 rounded-xl p-3">
+      <div class="flex items-center gap-2 flex-wrap mb-1">
+        <span class="text-xs font-mono px-1.5 py-0.5 rounded bg-white border border-red-100 text-slate-500">${esc(s.shopId)}</span>
+        <p class="font-semibold text-slate-700">${esc(s.shopName)}</p>
+        ${shopStatusLabel(s.status)}
+        ${s.paymentType ? typeLabel(s.paymentType) : ''}
+        <span class="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-semibold ml-auto">🗑️ ถูกลบแล้ว</span>
+      </div>
+      <p class="text-xs text-slate-500">📍 ${esc(s.address || '-')} ${s.phone ? '| 📞 ' + esc(s.phone) : ''}</p>
+      <p class="text-xs text-slate-500">🗓️ เข้าเยี่ยมล่าสุด: ${fmtDate(s.lastVisit) || 'ยังไม่มีข้อมูล'} ${s.lat && s.lng ? `| 🌐 ${s.lat}, ${s.lng}` : ''}</p>
+      <div class="mt-1.5 bg-white border border-red-100 rounded-lg px-2.5 py-1.5">
+        <p class="text-xs text-red-600"><b>สาเหตุที่ลบ:</b> ${esc(s.deleteReason || '-')}</p>
+        <p class="text-xs text-red-400">ลบเมื่อ: ${fmtDateTime(s.deletedAt)} น.</p>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ==================================================================
+   MAP
+   ================================================================== */
+function renderMapSelect() {
+  const sel = document.getElementById('mapShopSelect');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">-- เลือกร้านค้า --</option>' +
+    sortedShops().map(s => `<option value="${esc(s.shopId)}">${esc(s.shopName)}</option>`).join('');
+  if (current) sel.value = current;
+}
+
+function updateMap() {
+  const shopId = document.getElementById('mapShopSelect').value;
+  const infoBox = document.getElementById('mapShopInfo');
+  const link = document.getElementById('mapExternalLink');
+  const frame = document.getElementById('mapFrame');
+
+  if (!shopId) {
+    infoBox.innerHTML = 'เลือกร้านค้าเพื่อแสดงรายละเอียดตำแหน่ง';
+    link.classList.add('hidden');
+    frame.src = 'https://maps.google.com/maps?q=Thailand&z=6&output=embed';
+    return;
+  }
+  const shop = getShopById(shopId);
+  if (!shop) return;
+
+  infoBox.innerHTML = `
+    <p class="font-semibold text-slate-700 mb-1">${esc(shop.shopName)} <span class="text-xs font-mono text-slate-400">(${esc(shop.shopId)})</span></p>
+    <p class="text-xs text-slate-500 mb-1">📍 ${esc(shop.address)}</p>
+    ${shop.phone ? `<p class="text-xs text-slate-500 mb-1">📞 ${esc(shop.phone)}</p>` : ''}
+    ${shop.paymentType ? `<p class="text-xs text-slate-500 mb-1">${shop.paymentType === 'เงินสด' ? '💵' : '💳'} ประเภท: ${esc(shop.paymentType)}</p>` : ''}
+    <p class="text-xs text-slate-500 mb-1">🗓️ เข้าเยี่ยมล่าสุด: ${fmtDate(shop.lastVisit)}</p>
+    ${shop.lat && shop.lng ? `<p class="text-xs text-slate-500">🌐 ${shop.lat}, ${shop.lng}</p>` : `<p class="text-xs text-red-400">ยังไม่มีพิกัดตำแหน่ง</p>`}
+  `;
+
+  if (shop.lat && shop.lng) {
+    frame.src = `https://maps.google.com/maps?q=${shop.lat},${shop.lng}&z=16&output=embed`;
+    link.href = mapsLink(shop.lat, shop.lng);
+    link.classList.remove('hidden');
+  } else {
+    frame.src = `https://maps.google.com/maps?q=${encodeURIComponent(shop.address)}&z=14&output=embed`;
+    link.href = `https://www.google.com/maps?q=${encodeURIComponent(shop.address)}`;
+    link.classList.remove('hidden');
+  }
+}
+
+/* ==================================================================
+   VISIT ENTRY (ADMIN) — ค้นหาร้านค้าด้วยรหัส/ชื่อ แทน dropdown
+   หมายเหตุ: ประเภทรายการ (เงินสด/เครดิต) และพิกัดตำแหน่ง จะดึงมาจาก
+   ข้อมูลร้านค้าที่บันทึกไว้แล้วโดยอัตโนมัติ ไม่ต้องให้แอดมินกรอกซ้ำ
+   ================================================================== */
+function handleVisitShopSearchInput() {
+  const term = document.getElementById('visitShopSearchInput').value.trim().toLowerCase();
+  const resultsBox = document.getElementById('visitShopSearchResults');
+  document.getElementById('visitShopSelectedId').value = '';
+  document.getElementById('visitStatusBox').classList.add('hidden');
+
+  if (!term) { resultsBox.classList.add('hidden'); resultsBox.innerHTML = ''; return; }
+
+  const matches = sortedShops().filter(s =>
+    String(s.shopId).toLowerCase().includes(term) ||
+    String(s.shopName).toLowerCase().includes(term) ||
+    String(s.address).toLowerCase().includes(term)
+  ).slice(0, 20);
+
+  if (matches.length === 0) {
+    resultsBox.innerHTML = `<div class="px-3 py-2.5 text-xs text-slate-400">ไม่พบร้านค้าที่ตรงกับคำค้นหา</div>`;
+  } else {
+    resultsBox.innerHTML = matches.map(s => `
+      <button type="button" onclick="selectVisitShop('${esc(s.shopId)}')" class="w-full text-left px-3 py-2.5 hover:bg-slate-50 border-b border-slate-50 last:border-0">
+        <span class="text-xs font-mono text-slate-400">${esc(s.shopId)}</span>
+        <span class="text-sm font-medium text-slate-700 ml-2">${esc(s.shopName)}</span>
+        <div class="text-xs text-slate-400 truncate">${esc(s.address || '-')}</div>
+      </button>
+    `).join('');
+  }
+  resultsBox.classList.remove('hidden');
+}
+
+function selectVisitShop(shopId) {
+  const shop = getShopById(shopId);
+  if (!shop) return;
+  document.getElementById('visitShopSelectedId').value = shopId;
+  document.getElementById('visitShopSearchInput').value = `${shop.shopId} — ${shop.shopName}`;
+  document.getElementById('visitShopSearchResults').classList.add('hidden');
+  updateVisitShopStatus();
+}
+
+/** ใช้เมื่อกดปุ่ม "➕ เพิ่ม" จากการ์ดร้านค้าในรายชื่อร้านค้าทั้งหมด */
+function selectShopForVisit(shopId) {
+  if (!isAdmin) return;
+  document.getElementById('visitEntrySection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  selectVisitShop(shopId);
+}
+
+function updateVisitShopStatus() {
+  const shopId = document.getElementById('visitShopSelectedId').value;
+  const box = document.getElementById('visitStatusBox');
+  if (!shopId) { box.classList.add('hidden'); return; }
+  const shop = getShopById(shopId);
+  if (!shop) { box.classList.add('hidden'); return; }
+
+  const shopVisits = visits.filter(v => String(v.shopId) === String(shopId));
+  const cashCount = shopVisits.filter(v => v.type === 'เงินสด').length;
+  const creditCount = shopVisits.filter(v => v.type === 'เครดิต').length;
+
+  box.classList.remove('hidden');
+  box.innerHTML = `
+    <div class="flex flex-wrap items-center gap-3">
+      <span>สถานะปัจจุบัน:</span> ${shopStatusLabel(shop.status)}
+      ${shop.paymentType ? typeLabel(shop.paymentType) : ''}
+      <span>เข้าเยี่ยมล่าสุด: <b>${fmtDate(shop.lastVisit) || 'ยังไม่มี'}</b></span>
+      <span>💵 เงินสด: <b>${cashCount}</b> ครั้ง</span>
+      <span>💳 เครดิต: <b>${creditCount}</b> ครั้ง</span>
+      <span>รวมทั้งหมด: <b>${shopVisits.length}</b> ครั้ง</span>
+    </div>
+  `;
+}
+
+async function handleAddVisit(e) {
+  e.preventDefault();
+  const shopId = document.getElementById('visitShopSelectedId').value;
+  const visitDate = document.getElementById('visitDate').value;
+  const note = document.getElementById('visitNote').value.trim();
+
+  if (!shopId || !visitDate) {
+    Swal.fire({ icon: 'warning', title: 'ข้อมูลไม่ครบถ้วน', text: 'กรุณาค้นหาและเลือกร้านค้า พร้อมระบุวันที่เข้าเยี่ยม' });
+    return;
+  }
+  const shop = getShopById(shopId);
+  if (!shop) {
+    Swal.fire({ icon: 'error', title: 'ไม่พบร้านค้า', text: 'กรุณาค้นหาและเลือกร้านค้าใหม่อีกครั้ง' });
+    return;
+  }
+
+  // ดึงประเภทรายการและพิกัดตำแหน่งจากข้อมูลร้านค้าที่มีอยู่แล้วโดยอัตโนมัติ
+  const type = shop.paymentType || 'เงินสด';
+  const lat = shop.lat || '';
+  const lng = shop.lng || '';
+
+  Swal.fire({ title: 'กำลังบันทึก...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+  try {
+    const payload = {
+      action: 'addVisit',
+      data: {
+        shopId, shopName: shop.shopName, visitDate, type, lat, lng, note,
+        status: 'old' // once visited, mark as "old" shop for future
+      }
+    };
+    const res = await apiFetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'บันทึกไม่สำเร็จ');
+
+    Swal.fire({ icon: 'success', title: 'บันทึกรายการสำเร็จ', timer: 1400, showConfirmButton: false });
+    document.getElementById('visitForm').reset();
+    document.getElementById('visitShopSelectedId').value = '';
+    document.getElementById('visitDate').value = bangkokDateStr();
+    document.getElementById('visitStatusBox').classList.add('hidden');
+    await loadFromSheet(true);
+  } catch (err) {
+    Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.message });
+  }
+}
+
+/* ==================================================================
+   VISIT HISTORY TABLE + SEARCH
+   ================================================================== */
+function sortedVisits(list) {
+  return [...list].sort((a, b) => {
+    const da = new Date(`${a.visitDate}T${a.visitTime || '00:00'}`).getTime();
+    const db = new Date(`${b.visitDate}T${b.visitTime || '00:00'}`).getTime();
+    return db - da;
+  });
+}
+
+function renderVisitHistory() {
+  const list = sortedVisits(visits);
+  const body = document.getElementById('visitHistoryBody');
+  const empty = document.getElementById('visitHistoryEmpty');
+  const totalCountEl = document.getElementById('visitHistoryTotalCount');
+  if (totalCountEl) totalCountEl.textContent = list.length;
+
+  if (list.length === 0) {
+    body.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+
+  body.innerHTML = list.map(v => {
+    const shop = getShopById(v.shopId) || {};
+    const isDeletedShop = String(v.note || '').includes('ถูกลบ');
+    const link = mapsLink(v.lat, v.lng);
+    const rowClass = isDeletedShop ? 'text-red-600 bg-red-50/50' : '';
+    return `
+      <tr class="border-t border-slate-100 hover:bg-slate-50 ${rowClass}">
+        <td class="px-3 py-2.5 whitespace-nowrap">${fmtDate(v.visitDate)}</td>
+        <td class="px-3 py-2.5 whitespace-nowrap">${fmtTime(v.visitTime)}</td>
+        <td class="px-3 py-2.5 font-medium">${esc(v.shopName)} ${isDeletedShop ? '<span class="text-xs px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 font-semibold ml-1">ร้านค้าถูกลบ</span>' : ''}</td>
+        <td class="px-3 py-2.5">${typeLabel(v.type)}</td>
+        <td class="px-3 py-2.5 max-w-[180px] truncate ${isDeletedShop ? '' : 'text-slate-500'}">${esc(shop.address || '-')}</td>
+        <td class="px-3 py-2.5 whitespace-nowrap ${isDeletedShop ? '' : 'text-slate-500'}">${esc(shop.phone || '-')}</td>
+        <td class="px-3 py-2.5">${link ? `<a href="${link}" target="_blank" class="${isDeletedShop ? 'text-red-600' : 'text-indigo-600'} hover:underline">🗺️ เปิดแผนที่</a>` : '<span class="text-slate-300">-</span>'}</td>
+        <td class="px-3 py-2.5 max-w-[220px] truncate ${isDeletedShop ? 'font-semibold' : 'text-slate-500'}">${esc(v.note || '-')}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+/* ==================================================================
+   SHOP HISTORY POPUP
+   ================================================================== */
+function openHistoryPopup(shopId) {
+  const shop = getShopById(shopId);
+  if (!shop) return;
+  const shopVisits = sortedVisits(visits.filter(v => String(v.shopId) === String(shopId)));
+  const totalVisits = shopVisits.length;
+
+  const rows = shopVisits.length ? shopVisits.map((v, idx) => `
+    <tr class="border-t border-slate-100 ${idx === 0 ? 'bg-indigo-50/60' : ''}">
+      <td class="px-2 py-2 text-xs font-semibold text-slate-500">${idx === 0 ? '🔸 ล่าสุด' : totalVisits - idx}</td>
+      <td class="px-2 py-2 text-xs font-medium">${fmtDate(v.visitDate)}</td>
+      <td class="px-2 py-2 text-xs">${fmtTime(v.visitTime)}</td>
+      <td class="px-2 py-2 text-xs">${typeLabel(v.type)}</td>
+      <td class="px-2 py-2 text-xs text-slate-500">${esc(v.note || '-')}</td>
+    </tr>
+  `).join('') : `<tr><td colspan="5" class="text-center text-slate-400 text-xs py-6">ยังไม่มีประวัติการเข้าเยี่ยม</td></tr>`;
+
+  Swal.fire({
+    title: '📜 ประวัติการเข้าเยี่ยมร้านค้า',
+    width: 680,
+    customClass: { popup: 'max-w-[95vw]' },
+    html: `
+      <div class="text-left">
+        <div class="bg-slate-50 border border-slate-100 rounded-xl p-3 mb-3 space-y-1.5">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-xs text-slate-400 w-28 flex-shrink-0">รหัสร้านค้า</span>
+            <span class="text-xs font-mono font-semibold bg-white border border-slate-200 px-2 py-0.5 rounded">${esc(shop.shopId)}</span>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-xs text-slate-400 w-28 flex-shrink-0">ชื่อร้านค้า</span>
+            <span class="text-sm font-bold text-slate-700">${esc(shop.shopName)}</span>
+          </div>
+          <div class="flex flex-wrap items-start gap-2">
+            <span class="text-xs text-slate-400 w-28 flex-shrink-0 pt-0.5">ที่อยู่ร้านค้า</span>
+            <span class="text-xs text-slate-600">${esc(shop.address || '-')}</span>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-xs text-slate-400 w-28 flex-shrink-0">สถานะร้านค้า</span>
+            ${shopStatusLabel(shop.status)}
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-xs text-slate-400 w-28 flex-shrink-0">ประเภทร้านค้า</span>
+            ${shop.paymentType ? typeLabel(shop.paymentType) : '<span class="text-xs text-slate-400">ไม่ระบุ</span>'}
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-xs text-slate-400 w-28 flex-shrink-0">เข้าเยี่ยมรวมทั้งหมด</span>
+            <span class="text-sm font-bold text-indigo-600">${totalVisits} ครั้ง</span>
+          </div>
+        </div>
+        <p class="text-xs font-semibold text-slate-500 mb-1.5">ตารางเข้าเยี่ยม (เรียงจากล่าสุดก่อนเสมอ)</p>
+        <div class="max-h-[300px] overflow-y-auto overflow-x-auto border border-slate-100 rounded-lg">
+          <table class="w-full text-left" style="min-width:460px">
+            <thead class="bg-slate-50 sticky top-0"><tr>
+              <th class="px-2 py-2 text-xs">ครั้งที่</th>
+              <th class="px-2 py-2 text-xs">วันที่</th><th class="px-2 py-2 text-xs">เวลา</th>
+              <th class="px-2 py-2 text-xs">ประเภท</th><th class="px-2 py-2 text-xs">หมายเหตุ</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      </div>
+    `,
+    confirmButtonText: 'ปิด',
+    confirmButtonColor: '#6366f1'
+  });
+}
+
+/* ==================================================================
+   SUMMARY
+   ================================================================== */
+function renderSummary() {
+  const newCount = shops.filter(s => s.status === 'new').length;
+  const oldCount = shops.filter(s => s.status === 'old').length;
+  const deletedCount = deletedShops.length;
+  const total = newCount + oldCount; // ร้านค้าที่ยังใช้งานอยู่ (หักร้านค้าที่ถูกลบออกแล้วโดยธรรมชาติ เนื่องจากร้านที่ถูกลบจะไม่อยู่ใน shops อีกต่อไป)
+
+  document.getElementById('sumNewShops').textContent = newCount;
+  document.getElementById('sumOldShops').textContent = oldCount;
+  document.getElementById('sumDeletedShops').textContent = deletedCount;
+  document.getElementById('sumTotalShops').textContent = total;
+
+  const list = sortedShops().filter(s => s.lastVisit);
+  const box = document.getElementById('summaryListBox');
+  if (list.length === 0) {
+    box.innerHTML = `<div class="text-center text-slate-400 py-6 text-sm">ยังไม่มีข้อมูลการเข้าเยี่ยม</div>`;
+    return;
+  }
+  box.innerHTML = list.map(s => `
+    <div class="flex items-center justify-between border border-slate-100 rounded-xl px-3 py-2 text-sm">
+      <div class="flex items-center gap-2 min-w-0">
+        <span class="truncate font-medium text-slate-700">${esc(s.shopName)}</span>
+        ${shopStatusLabel(s.status)}
+      </div>
+      <span class="text-xs text-slate-400 whitespace-nowrap ml-2">${fmtDate(s.lastVisit)}</span>
+    </div>
+  `).join('');
+}
+
+/* ==================================================================
+   CHART
+   ================================================================== */
+function renderChart() {
+  const newCount = shops.filter(s => s.status === 'new').length;
+  const oldCount = shops.filter(s => s.status === 'old').length;
+  const deletedCount = deletedShops.length;
+  const total = newCount + oldCount;
+
+  const ctx = document.getElementById('summaryChart').getContext('2d');
+  if (chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['ร้านค้าใหม่', 'ร้านค้าเก่า', 'ร้านค้าที่ถูกลบ', 'ร้านค้าทั้งหมด'],
+      datasets: [{
+        label: 'จำนวนร้านค้า',
+        data: [newCount, oldCount, deletedCount, total],
+        backgroundColor: ['#10b981', '#3b82f6', '#ef4444', '#f59e0b'],
+        borderRadius: 10,
+        maxBarThickness: 90
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+    }
+  });
+}
+
+/* ==================================================================
+   DOWNLOAD: PDF
+   ================================================================== */
+function downloadPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  doc.setFontSize(14);
+  doc.text('Shop Visit Report / ตารางเข้าเยี่ยม และที่ตั้งร้านค้า', 14, 15);
+  doc.setFontSize(9);
+  doc.text('Generated: ' + fmtDateTime(new Date()) + ' (Thailand Time, UTC+7)', 14, 21);
+
+  const shopRows = sortedShops().map(s => [
+    s.shopId, s.shopName, s.address, s.phone || '-', s.paymentType || '-',
+    fmtDate(s.lastVisit), s.status === 'new' ? 'New' : 'Old',
+    (s.lat && s.lng) ? `${s.lat}, ${s.lng}` : '-'
+  ]);
+
+  doc.autoTable({
+    head: [['Shop ID', 'Name', 'Address', 'Phone', 'Payment Type', 'Last Visit', 'Status', 'Coordinates']],
+    body: shopRows,
+    startY: 26,
+    styles: { fontSize: 7, cellPadding: 2 },
+    headStyles: { fillColor: [99, 102, 241] }
+  });
+
+  const visitRows = sortedVisits(visits).map(v => [
+    fmtDate(v.visitDate), fmtTimePlain(v.visitTime), v.shopName, v.type,
+    (v.lat && v.lng) ? `${v.lat}, ${v.lng}` : '-', v.note || '-'
+  ]);
+
+  doc.addPage();
+  doc.setFontSize(12);
+  doc.text('Visit History', 14, 15);
+  doc.autoTable({
+    head: [['Date', 'Time', 'Shop', 'Type', 'Coordinates', 'Note']],
+    body: visitRows,
+    startY: 20,
+    styles: { fontSize: 7, cellPadding: 2 },
+    headStyles: { fillColor: [16, 185, 129] }
+  });
+
+  const deletedRows = sortedDeletedShops().map(s => [
+    s.shopId, s.shopName, s.address || '-', s.phone || '-',
+    s.deleteReason || '-', fmtDateTime(s.deletedAt)
+  ]);
+
+  if (deletedRows.length > 0) {
+    doc.addPage();
+    doc.setFontSize(12);
+    doc.text('Deleted Shops', 14, 15);
+    doc.autoTable({
+      head: [['Shop ID', 'Name', 'Address', 'Phone', 'Delete Reason', 'Deleted At']],
+      body: deletedRows,
+      startY: 20,
+      styles: { fontSize: 7, cellPadding: 2 },
+      headStyles: { fillColor: [239, 68, 68] }
+    });
+  }
+
+  doc.save(`shop-visit-report-${bangkokDateStr()}.pdf`);
+  Swal.fire({ icon: 'success', title: 'ดาวน์โหลด PDF สำเร็จ', timer: 1400, showConfirmButton: false });
+}
+
+/* ==================================================================
+   DOWNLOAD: Excel/CSV
+   ================================================================== */
+function downloadExcel() {
+  try {
+    const wb = XLSX.utils.book_new();
+
+    const shopData = sortedShops().map(s => ({
+      'รหัสร้านค้า': s.shopId, 'ชื่อร้านค้า': s.shopName, 'ที่อยู่': s.address,
+      'เบอร์โทร': s.phone || '', 'ประเภท': s.paymentType || '', 'วันที่เข้าเยี่ยมล่าสุด': s.lastVisit || '',
+      'สถานะ': s.status === 'new' ? 'ร้านใหม่' : 'ร้านเก่า',
+      'ละติจูด': s.lat || '', 'ลองจิจูด': s.lng || ''
+    }));
+    const wsShops = XLSX.utils.json_to_sheet(shopData);
+    XLSX.utils.book_append_sheet(wb, wsShops, 'Shops');
+
+    const visitData = sortedVisits(visits).map(v => ({
+      'วันที่': v.visitDate, 'เวลา': fmtTime(v.visitTime), 'ชื่อร้านค้า': v.shopName,
+      'ประเภท': v.type, 'ละติจูด': v.lat || '', 'ลองจิจูด': v.lng || '', 'หมายเหตุ': v.note || ''
+    }));
+    const wsVisits = XLSX.utils.json_to_sheet(visitData);
+    XLSX.utils.book_append_sheet(wb, wsVisits, 'Visits');
+
+    const deletedData = sortedDeletedShops().map(s => ({
+      'รหัสร้านค้า': s.shopId, 'ชื่อร้านค้า': s.shopName, 'ที่อยู่': s.address || '',
+      'เบอร์โทร': s.phone || '', 'ประเภท': s.paymentType || '',
+      'สถานะ': s.status === 'new' ? 'ร้านใหม่' : 'ร้านเก่า',
+      'สาเหตุที่ลบ': s.deleteReason || '', 'ลบเมื่อ': fmtDateTime(s.deletedAt),
+      'ละติจูด': s.lat || '', 'ลองจิจูด': s.lng || ''
+    }));
+    const wsDeleted = XLSX.utils.json_to_sheet(deletedData);
+    XLSX.utils.book_append_sheet(wb, wsDeleted, 'DeletedShops');
+
+    XLSX.writeFile(wb, `shop-visit-data-${bangkokDateStr()}.xlsx`);
+    Swal.fire({ icon: 'success', title: 'ดาวน์โหลดไฟล์ Excel สำเร็จ', timer: 1400, showConfirmButton: false });
+  } catch (err) {
+    Swal.fire({ icon: 'error', title: 'ดาวน์โหลดไม่สำเร็จ', text: err.message });
+  }
+}
+</script>
+</body>
+</html>
