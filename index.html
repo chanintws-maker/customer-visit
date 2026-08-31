@@ -165,8 +165,11 @@
     <h2 class="font-bold text-slate-700 flex items-center gap-2 mb-4"><span>🏬</span> จัดการร้านค้า <span class="text-xs font-normal bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">แอดมิน</span></h2>
     <form id="shopForm" onsubmit="handleAddShop(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
       <div>
-        <label class="text-xs font-semibold text-slate-500 mb-1 block">รหัสร้านค้า</label>
-        <input type="text" id="shopCode" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm" placeholder="เว้นว่างเพื่อให้ระบบสร้างอัตโนมัติ">
+        <label class="text-xs font-semibold text-slate-500 mb-1 block">จังหวัดที่ตั้งร้านค้า <span class="text-red-500">*</span></label>
+        <select id="shopProvince" required onchange="updateShopCodePreview()" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm">
+          <option value="">-- เลือกจังหวัด --</option>
+        </select>
+        <p class="text-xs text-slate-400 mt-1">รหัสร้านค้า: <span id="shopCodePreview" class="font-mono font-semibold text-indigo-600">เลือกจังหวัดก่อน</span></p>
       </div>
       <div class="lg:col-span-2">
         <label class="text-xs font-semibold text-slate-500 mb-1 block">ชื่อร้านค้า <span class="text-red-500">*</span></label>
@@ -228,6 +231,35 @@
       <div id="deleteShopPreview" class="hidden mt-3 bg-red-50 border border-red-100 rounded-xl p-3 text-sm text-red-700"></div>
       <div class="flex justify-end mt-3">
         <button type="button" onclick="handleDeleteFromSelector()" class="gradient-btn-red text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow">🗑️ ยืนยันลบร้านค้า</button>
+      </div>
+    </div>
+
+    <div class="border-t border-slate-100 mt-5 pt-4">
+      <h3 class="font-semibold text-slate-700 flex items-center gap-2 mb-3"><span>📍</span> แก้ไขพิกัดที่ตั้งร้านค้า</h3>
+      <div class="relative mb-3">
+        <label class="text-xs font-semibold text-slate-500 mb-1 block">ค้นหาร้านค้า (รหัสร้านค้า หรือ ชื่อร้านค้า) <span class="text-red-500">*</span></label>
+        <input type="text" id="editCoordsSearchInput" oninput="handleEditCoordsSearchInput()" onfocus="handleEditCoordsSearchInput()" autocomplete="off"
+          class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm" placeholder="พิมพ์รหัสร้านค้า หรือ ชื่อร้านค้า...">
+        <div id="editCoordsSearchResults" class="hidden absolute z-20 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-56 overflow-y-auto"></div>
+        <input type="hidden" id="editCoordsSelectedId">
+      </div>
+      <div id="editCoordsFormBox" class="hidden">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="text-xs font-semibold text-slate-500 mb-1 block">ละติจูด (Lat)</label>
+            <input type="text" id="editCoordsLat" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm" placeholder="13.9126">
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-500 mb-1 block">ลองจิจูด (Lng)</label>
+            <input type="text" id="editCoordsLng" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm" placeholder="100.5106">
+          </div>
+          <div class="flex items-end">
+            <button type="button" onclick="useCurrentLocation('editCoordsLat','editCoordsLng')" class="gradient-btn-slate text-white text-xs font-semibold px-3 py-2.5 rounded-xl shadow w-full">📍 ใช้ตำแหน่งปัจจุบัน</button>
+          </div>
+        </div>
+        <div class="flex justify-end mt-3">
+          <button type="button" onclick="handleSaveCoords()" class="gradient-btn text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow">💾 บันทึกพิกัด</button>
+        </div>
       </div>
     </div>
   </section>
@@ -402,6 +434,97 @@ const MAX_SHOWN_SHOPS_START = 30;
 const MAX_SHOWN_SHOPS_LIMIT = 100;
 const SHOP_PAGE_STEP = 30;
 
+/**
+ * รายชื่อจังหวัดแบ่งตามภาค (4 ภาค: เหนือ/ตะวันออกเฉียงเหนือ/กลาง/ใต้) พร้อมตัวย่อภาษาอังกฤษ
+ * ใช้สร้างรหัสร้านค้าอัตโนมัติ รูปแบบ: [ตัวย่อภาค][ตัวย่อจังหวัด][เลขรันนิ่ง 7 หลัก] เช่น NCNX0000001
+ */
+const THAI_PROVINCES = [
+  // ภาคเหนือ (N) — 17 จังหวัด
+  { region: 'N', regionName: 'ภาคเหนือ', code: 'CNX', name: 'เชียงใหม่' },
+  { region: 'N', regionName: 'ภาคเหนือ', code: 'CRI', name: 'เชียงราย' },
+  { region: 'N', regionName: 'ภาคเหนือ', code: 'MHS', name: 'แม่ฮ่องสอน' },
+  { region: 'N', regionName: 'ภาคเหนือ', code: 'LPG', name: 'ลำปาง' },
+  { region: 'N', regionName: 'ภาคเหนือ', code: 'LPN', name: 'ลำพูน' },
+  { region: 'N', regionName: 'ภาคเหนือ', code: 'PYO', name: 'พะเยา' },
+  { region: 'N', regionName: 'ภาคเหนือ', code: 'PRE', name: 'แพร่' },
+  { region: 'N', regionName: 'ภาคเหนือ', code: 'NAN', name: 'น่าน' },
+  { region: 'N', regionName: 'ภาคเหนือ', code: 'UTT', name: 'อุตรดิตถ์' },
+  { region: 'N', regionName: 'ภาคเหนือ', code: 'TAK', name: 'ตาก' },
+  { region: 'N', regionName: 'ภาคเหนือ', code: 'STI', name: 'สุโขทัย' },
+  { region: 'N', regionName: 'ภาคเหนือ', code: 'PLK', name: 'พิษณุโลก' },
+  { region: 'N', regionName: 'ภาคเหนือ', code: 'PCT', name: 'พิจิตร' },
+  { region: 'N', regionName: 'ภาคเหนือ', code: 'KPP', name: 'กำแพงเพชร' },
+  { region: 'N', regionName: 'ภาคเหนือ', code: 'PNB', name: 'เพชรบูรณ์' },
+  { region: 'N', regionName: 'ภาคเหนือ', code: 'NSN', name: 'นครสวรรค์' },
+  { region: 'N', regionName: 'ภาคเหนือ', code: 'UTI', name: 'อุทัยธานี' },
+
+  // ภาคตะวันออกเฉียงเหนือ (NE) — 20 จังหวัด
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'NKI', name: 'หนองคาย' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'LEI', name: 'เลย' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'NBP', name: 'หนองบัวลำภู' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'UDN', name: 'อุดรธานี' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'SNK', name: 'สกลนคร' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'NPM', name: 'นครพนม' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'BKN', name: 'บึงกาฬ' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'MDH', name: 'มุกดาหาร' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'KSN', name: 'กาฬสินธุ์' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'KKN', name: 'ขอนแก่น' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'MSK', name: 'มหาสารคาม' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'RET', name: 'ร้อยเอ็ด' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'YST', name: 'ยโสธร' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'ACR', name: 'อำนาจเจริญ' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'CYP', name: 'ชัยภูมิ' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'NRM', name: 'นครราชสีมา' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'BRM', name: 'บุรีรัมย์' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'SRN', name: 'สุรินทร์' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'SSK', name: 'ศรีสะเกษ' },
+  { region: 'NE', regionName: 'ภาคตะวันออกเฉียงเหนือ', code: 'UBN', name: 'อุบลราชธานี' },
+
+  // ภาคกลาง (C) — 26 จังหวัด (รวมตะวันออกและตะวันตก)
+  { region: 'C', regionName: 'ภาคกลาง', code: 'BKK', name: 'กรุงเทพมหานคร' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'NBI', name: 'นนทบุรี' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'PTE', name: 'ปทุมธานี' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'SPK', name: 'สมุทรปราการ' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'SKN', name: 'สมุทรสาคร' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'NPT', name: 'นครปฐม' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'AYA', name: 'พระนครศรีอยุธยา' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'ATG', name: 'อ่างทอง' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'SGB', name: 'สิงห์บุรี' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'CNT', name: 'ชัยนาท' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'LRI', name: 'ลพบุรี' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'SRI', name: 'สระบุรี' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'SPB', name: 'สุพรรณบุรี' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'KRI', name: 'กาญจนบุรี' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'RBR', name: 'ราชบุรี' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'PBI', name: 'เพชรบุรี' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'PKN', name: 'ประจวบคีรีขันธ์' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'SKM', name: 'สมุทรสงคราม' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'NYK', name: 'นครนายก' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'PRI', name: 'ปราจีนบุรี' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'SKW', name: 'สระแก้ว' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'CCS', name: 'ฉะเชิงเทรา' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'CBI', name: 'ชลบุรี' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'RYG', name: 'ระยอง' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'CTI', name: 'จันทบุรี' },
+  { region: 'C', regionName: 'ภาคกลาง', code: 'TRT', name: 'ตราด' },
+
+  // ภาคใต้ (S) — 14 จังหวัด
+  { region: 'S', regionName: 'ภาคใต้', code: 'CPN', name: 'ชุมพร' },
+  { region: 'S', regionName: 'ภาคใต้', code: 'RNG', name: 'ระนอง' },
+  { region: 'S', regionName: 'ภาคใต้', code: 'SNI', name: 'สุราษฎร์ธานี' },
+  { region: 'S', regionName: 'ภาคใต้', code: 'PNA', name: 'พังงา' },
+  { region: 'S', regionName: 'ภาคใต้', code: 'HKT', name: 'ภูเก็ต' },
+  { region: 'S', regionName: 'ภาคใต้', code: 'KBI', name: 'กระบี่' },
+  { region: 'S', regionName: 'ภาคใต้', code: 'NST', name: 'นครศรีธรรมราช' },
+  { region: 'S', regionName: 'ภาคใต้', code: 'TRG', name: 'ตรัง' },
+  { region: 'S', regionName: 'ภาคใต้', code: 'PLG', name: 'พัทลุง' },
+  { region: 'S', regionName: 'ภาคใต้', code: 'STN', name: 'สตูล' },
+  { region: 'S', regionName: 'ภาคใต้', code: 'SGK', name: 'สงขลา' },
+  { region: 'S', regionName: 'ภาคใต้', code: 'PTN', name: 'ปัตตานี' },
+  { region: 'S', regionName: 'ภาคใต้', code: 'YLA', name: 'ยะลา' },
+  { region: 'S', regionName: 'ภาคใต้', code: 'NWT', name: 'นราธิวาส' },
+];
+
 /* ==================================================================
    STATE
    ================================================================== */
@@ -419,12 +542,58 @@ let clockIntervalId = null;
 document.addEventListener('DOMContentLoaded', () => {
   applyAdminUI();
   document.getElementById('visitDate').value = bangkokDateStr();
+  renderProvinceSelect();
   initNetworkWatcher();
   startLiveClock();
   registerServiceWorker();
   testConnection(true);
   loadFromSheet(true);
 });
+
+/** สร้างตัวเลือกจังหวัดในฟอร์มเพิ่มร้านค้า จัดกลุ่มตามภาค */
+function renderProvinceSelect() {
+  const sel = document.getElementById('shopProvince');
+  if (!sel) return;
+  const regionOrder = [
+    { key: 'N', label: 'ภาคเหนือ' },
+    { key: 'NE', label: 'ภาคตะวันออกเฉียงเหนือ' },
+    { key: 'C', label: 'ภาคกลาง' },
+    { key: 'S', label: 'ภาคใต้' },
+  ];
+  let html = '<option value="">-- เลือกจังหวัด --</option>';
+  regionOrder.forEach(r => {
+    const provinces = THAI_PROVINCES.filter(p => p.region === r.key);
+    html += `<optgroup label="${esc(r.label)}">`;
+    html += provinces.map(p => `<option value="${p.region}|${p.code}">${esc(p.name)} (${p.region}${p.code})</option>`).join('');
+    html += `</optgroup>`;
+  });
+  sel.innerHTML = html;
+}
+
+/** แสดงตัวอย่างรหัสร้านค้าที่จะถูกสร้าง (คำนวณเบื้องต้นฝั่ง frontend, ค่าจริงยืนยันจาก backend ตอนบันทึก) */
+function updateShopCodePreview() {
+  const val = document.getElementById('shopProvince').value;
+  const preview = document.getElementById('shopCodePreview');
+  if (!val) { preview.textContent = 'เลือกจังหวัดก่อน'; return; }
+  const [region, province] = val.split('|');
+  const prefix = region + province;
+  const next = nextSequenceForPrefix(prefix);
+  preview.textContent = prefix + String(next).padStart(7, '0') + ' (ตัวอย่าง)';
+}
+
+/** หาลำดับถัดไปของรหัสร้านค้าตาม prefix ภาค+จังหวัด จากข้อมูลร้านค้าปัจจุบัน + ร้านค้าที่ถูกลบ (กันเลขซ้ำ) */
+function nextSequenceForPrefix(prefix) {
+  let maxSeq = 0;
+  [...shops, ...deletedShops].forEach(s => {
+    const id = String(s.shopId || '');
+    if (id.startsWith(prefix)) {
+      const numPart = id.slice(prefix.length);
+      const n = parseInt(numPart, 10);
+      if (!isNaN(n) && n > maxSeq) maxSeq = n;
+    }
+  });
+  return maxSeq + 1;
+}
 
 /**
  * ลงทะเบียน Service Worker เพื่อให้แอปติดตั้งเป็นไอคอนหน้าจอโฮมได้ (PWA)
@@ -686,6 +855,7 @@ function refreshAll() {
   renderSummary();
   renderChart();
   renderDeletedShopsList();
+  updateShopCodePreview();
 }
 
 /* ==================================================================
@@ -839,7 +1009,9 @@ function renderShopList() {
   if (total === 0) {
     box.innerHTML = `<div class="text-center text-slate-400 py-10 text-sm">ไม่พบร้านค้า</div>`;
   } else {
-    box.innerHTML = list.slice(0, shown).map(s => `
+    box.innerHTML = list.slice(0, shown).map(s => {
+      const link = mapsLink(s.lat, s.lng);
+      return `
       <div class="fade-in flex flex-wrap items-center justify-between gap-2 border border-slate-100 rounded-xl p-3 hover:bg-slate-50 transition">
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-2 flex-wrap">
@@ -850,7 +1022,11 @@ function renderShopList() {
             ${visitStatusBadge(s.lastVisit)}
           </div>
           <p class="text-xs text-slate-400 truncate">📍 ${esc(s.address)} ${s.phone ? '| 📞 ' + esc(s.phone) : ''}</p>
-          <p class="text-xs text-slate-400">🗓️ เข้าเยี่ยมล่าสุด: ${fmtDate(s.lastVisit) || 'ยังไม่มีข้อมูล'} ${s.lat && s.lng ? `| 🌐 ${s.lat}, ${s.lng}` : ''}</p>
+          <p class="text-xs text-slate-400 flex items-center flex-wrap gap-x-1">
+            🗓️ เข้าเยี่ยมล่าสุด: ${fmtDate(s.lastVisit) || 'ยังไม่มีข้อมูล'}
+            ${s.lat && s.lng ? `| 🌐 ${s.lat}, ${s.lng}` : '| <span class="text-red-400">ยังไม่มีพิกัด</span>'}
+            ${link ? `| <a href="${link}" target="_blank" class="text-indigo-600 hover:underline font-medium">🗺️ เปิดในแผนที่</a>` : ''}
+          </p>
         </div>
         <div class="flex gap-1.5 flex-shrink-0">
           <button onclick="openHistoryPopup('${esc(s.shopId)}')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-xs font-semibold px-3 py-2 rounded-lg transition">📜 ประวัติ</button>
@@ -859,7 +1035,8 @@ function renderShopList() {
           <button onclick="jumpToDeleteShop('${esc(s.shopId)}')" class="gradient-btn-red text-white text-xs font-semibold px-3 py-2 rounded-lg shadow">🗑️</button>` : ''}
         </div>
       </div>
-    `).join('');
+    `;
+    }).join('');
   }
 
   document.getElementById('shopTotalCount').textContent = total;
@@ -878,6 +1055,7 @@ function showMoreShops() {
 function resetShopForm() {
   document.getElementById('shopForm').reset();
   document.getElementById('editShopId').value = '';
+  document.getElementById('shopCodePreview').textContent = 'เลือกจังหวัดก่อน';
 }
 
 function useCurrentLocation(latId, lngId) {
@@ -897,7 +1075,7 @@ function useCurrentLocation(latId, lngId) {
 
 async function handleAddShop(e) {
   e.preventDefault();
-  const shopCode = document.getElementById('shopCode').value.trim();
+  const provinceVal = document.getElementById('shopProvince').value;
   const shopName = document.getElementById('shopName').value.trim();
   const address = document.getElementById('shopAddress').value.trim();
   const phone = document.getElementById('shopPhone').value.trim();
@@ -906,25 +1084,20 @@ async function handleAddShop(e) {
   const lat = document.getElementById('shopLat').value.trim();
   const lng = document.getElementById('shopLng').value.trim();
 
-  if (!shopName || !address || !paymentType) {
-    Swal.fire({ icon: 'warning', title: 'ข้อมูลไม่ครบถ้วน', text: 'กรุณากรอกชื่อ ที่อยู่ และประเภท (เงินสด/เครดิต) ของร้านค้า' });
+  if (!provinceVal || !shopName || !address || !paymentType) {
+    Swal.fire({ icon: 'warning', title: 'ข้อมูลไม่ครบถ้วน', text: 'กรุณาเลือกจังหวัด และกรอกชื่อ ที่อยู่ ประเภท (เงินสด/เครดิต) ของร้านค้าให้ครบ' });
     return;
   }
-
-  // check duplicate shop code before sending, for a faster friendlier error
-  if (shopCode && shops.some(s => String(s.shopId).toLowerCase() === shopCode.toLowerCase())) {
-    Swal.fire({ icon: 'warning', title: 'รหัสร้านค้าซ้ำ', text: `รหัสร้านค้า "${shopCode}" มีอยู่ในระบบแล้ว กรุณาใช้รหัสอื่น` });
-    return;
-  }
+  const [region, province] = provinceVal.split('|');
 
   Swal.fire({ title: 'กำลังบันทึก...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
   try {
-    const payload = { action: 'addShop', data: { shopId: shopCode || undefined, shopName, address, phone, paymentType, lastVisit, lat, lng, status: 'new' } };
+    const payload = { action: 'addShop', data: { region, province, shopName, address, phone, paymentType, lastVisit, lat, lng, status: 'new' } };
     const res = await apiFetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
     const data = await res.json();
     if (!data.success) throw new Error(data.error || 'บันทึกไม่สำเร็จ');
 
-    Swal.fire({ icon: 'success', title: 'เพิ่มร้านค้าสำเร็จ', timer: 1400, showConfirmButton: false });
+    Swal.fire({ icon: 'success', title: 'เพิ่มร้านค้าสำเร็จ', html: `รหัสร้านค้าที่สร้าง: <b class="font-mono">${esc(data.shopId || '')}</b>`, timer: 2200, showConfirmButton: false });
     resetShopForm();
     shopShowCount = MAX_SHOWN_SHOPS_START;
     await loadFromSheet(true);
@@ -1033,6 +1206,76 @@ function handleDeleteFromSelector() {
     return;
   }
   confirmDeleteShop(shopId, reason);
+}
+
+/* ==================================================================
+   EDIT SHOP COORDINATES (Admin - Shop Management section)
+   ================================================================== */
+function handleEditCoordsSearchInput() {
+  const term = document.getElementById('editCoordsSearchInput').value.trim().toLowerCase();
+  const resultsBox = document.getElementById('editCoordsSearchResults');
+  document.getElementById('editCoordsSelectedId').value = '';
+  document.getElementById('editCoordsFormBox').classList.add('hidden');
+
+  if (!term) { resultsBox.classList.add('hidden'); resultsBox.innerHTML = ''; return; }
+
+  const matches = sortedShops().filter(s =>
+    String(s.shopId).toLowerCase().includes(term) || String(s.shopName).toLowerCase().includes(term)
+  ).slice(0, 20);
+
+  if (matches.length === 0) {
+    resultsBox.innerHTML = `<div class="px-3 py-2.5 text-xs text-slate-400">ไม่พบร้านค้าที่ตรงกับคำค้นหา</div>`;
+  } else {
+    resultsBox.innerHTML = matches.map(s => `
+      <button type="button" onclick="selectEditCoordsShop('${esc(s.shopId)}')" class="w-full text-left px-3 py-2.5 hover:bg-slate-50 border-b border-slate-50 last:border-0">
+        <span class="text-xs font-mono text-slate-400">${esc(s.shopId)}</span>
+        <span class="text-sm font-medium text-slate-700 ml-2">${esc(s.shopName)}</span>
+      </button>
+    `).join('');
+  }
+  resultsBox.classList.remove('hidden');
+}
+
+function selectEditCoordsShop(shopId) {
+  const shop = getShopById(shopId);
+  if (!shop) return;
+  document.getElementById('editCoordsSelectedId').value = shopId;
+  document.getElementById('editCoordsSearchInput').value = `${shop.shopId} — ${shop.shopName}`;
+  document.getElementById('editCoordsSearchResults').classList.add('hidden');
+  document.getElementById('editCoordsLat').value = shop.lat || '';
+  document.getElementById('editCoordsLng').value = shop.lng || '';
+  document.getElementById('editCoordsFormBox').classList.remove('hidden');
+}
+
+async function handleSaveCoords() {
+  const shopId = document.getElementById('editCoordsSelectedId').value;
+  const lat = document.getElementById('editCoordsLat').value.trim();
+  const lng = document.getElementById('editCoordsLng').value.trim();
+
+  if (!shopId) {
+    Swal.fire({ icon: 'warning', title: 'กรุณาเลือกร้านค้า', text: 'โปรดค้นหาและเลือกร้านค้าที่ต้องการแก้ไขพิกัดก่อน' });
+    return;
+  }
+  if (!lat || !lng) {
+    Swal.fire({ icon: 'warning', title: 'กรุณากรอกพิกัด', text: 'โปรดกรอกละติจูดและลองจิจูดให้ครบ' });
+    return;
+  }
+
+  Swal.fire({ title: 'กำลังบันทึกพิกัด...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+  try {
+    const payload = { action: 'updateShop', data: { shopId, lat, lng } };
+    const res = await apiFetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'บันทึกพิกัดไม่สำเร็จ');
+
+    Swal.fire({ icon: 'success', title: 'บันทึกพิกัดสำเร็จ', timer: 1400, showConfirmButton: false });
+    document.getElementById('editCoordsSearchInput').value = '';
+    document.getElementById('editCoordsSelectedId').value = '';
+    document.getElementById('editCoordsFormBox').classList.add('hidden');
+    await loadFromSheet(true);
+  } catch (err) {
+    Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.message });
+  }
 }
 
 /* ==================================================================
